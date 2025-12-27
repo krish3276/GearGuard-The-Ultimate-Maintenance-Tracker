@@ -73,11 +73,23 @@ Whether you're managing a small workshop or a large industrial facility, GearGua
 
 ---
 
+## 👤 User Roles
+
+GearGuard supports three distinct user roles, each with specific responsibilities and access levels:
+
+| Role | Description | Key Responsibilities |
+|------|-------------|---------------------|
+| **🧑‍💼 Employee** | Reports equipment issues and tracks their status | • Create maintenance requests for faulty equipment<br>• Track the status and progress of submitted requests<br>• View equipment assigned to them |
+| **🔧 Technician** | Handles repairs and maintenance tasks | • View and manage assigned maintenance requests<br>• Update repair progress and status<br>• Log repair time and maintenance notes<br>• Mark requests as completed |
+| **👨‍💼 Manager/Admin** | Oversees the entire maintenance system | • Manage equipment inventory and categories<br>• Create and manage maintenance teams<br>• Assign work orders to technicians/teams<br>• Schedule preventive maintenance<br>• Monitor system health and analytics<br>• Manage users and access permissions |
+
+---
+
 ## ✨ Features
 
 ### 🔐 Authentication & Authorization
 - Secure user authentication with JWT tokens
-- Role-based access control (Admin, Manager, Technician)
+- Role-based access control (Employee, Technician, Manager/Admin)
 - Password encryption with bcrypt
 - Protected routes and API endpoints
 
