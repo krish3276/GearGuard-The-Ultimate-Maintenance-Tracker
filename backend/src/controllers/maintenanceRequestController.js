@@ -27,7 +27,7 @@ const getRequestById = async (req, res, next) => {
 
 const createRequest = async (req, res, next) => {
   try {
-    const request = await maintenanceRequestService.createRequest(req.body);
+    const request = await maintenanceRequestService.createRequest(req.body, req.user);
     res.status(201).json({
       success: true,
       data: request
@@ -90,7 +90,7 @@ const getPreventiveByDateRange = async (req, res, next) => {
 
 const updateStatus = async (req, res, next) => {
   try {
-    const request = await maintenanceRequestService.updateStatus(req.params.id, req.body.status);
+    const request = await maintenanceRequestService.updateStatus(req.params.id, req.body.status, req.user);
     res.status(200).json({
       success: true,
       data: request

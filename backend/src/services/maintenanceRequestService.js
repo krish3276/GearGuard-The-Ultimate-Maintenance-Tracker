@@ -28,14 +28,19 @@ const getRequestById = async (id) => {
   return request;
 };
 
-const createRequest = async (requestData) => {
+const createRequest = async (requestData, user) => {
   const equipment = await Equipment.findByPk(requestData.equipment_id);
   if (!equipment) {
     throw new NotFoundError('Equipment not found');
   }
 
   if (equipment.is_scrapped) {
-    throw new BadRequestError('Cannot create request for scrapped equipment');
+    if (user?.role === 'admin' || user?.role === 'manager') {
+      // If admin/manager creates a request for scrapped equipment, reactivate it
+      await equipment.update({ is_scrapped: false });
+    } else {
+      throw new BadRequestError('Cannot create request for scrapped equipment');
+    }
   }
 
   // Auto-assign maintenance team from equipment if not provided
@@ -146,7 +151,7 @@ const getPreventiveByDateRange = async (startDate, endDate) => {
   });
 };
 
-const updateStatus = async (id, status) => {
+const updateStatus = async (id, status, user) => {
   const request = await MaintenanceRequest.findByPk(id);
   if (!request) {
     throw new NotFoundError('Maintenance request not found');
@@ -165,17 +170,26 @@ const updateStatus = async (id, status) => {
     return getRequestById(id);
   }
 
-  if (!validTransitions[request.status].includes(status)) {
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
+
+  if (!isAdmin && (!validTransitions[request.status] || !validTransitions[request.status].includes(status))) {
     throw new BadRequestError(
-      `Cannot transition from ${request.status} to ${status}. Valid transitions: ${validTransitions[request.status].join(', ') || 'none (terminal state)'}`
+      `Cannot transition from ${request.status} to ${status}. Valid transitions: ${validTransitions[request.status]?.join(', ') || 'none (terminal state)'}`
     );
   }
 
+  const oldStatus = request.status;
   await request.update({ status });
 
-  // Mark equipment as scrapped when request is moved to Scrap
+  // Handle Equipment scrapping/un-scrapping
   if (status === 'Scrap') {
     await equipmentService.markAsScrapped(request.equipment_id);
+  } else if (oldStatus === 'Scrap' && status !== 'Scrap') {
+    // If moving AWAY from Scrap, un-scrap the equipment
+    const equipment = await Equipment.findByPk(request.equipment_id);
+    if (equipment) {
+      await equipment.update({ is_scrapped: false });
+    }
   }
 
   return getRequestById(id);
