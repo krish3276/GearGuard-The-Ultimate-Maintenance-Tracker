@@ -14,10 +14,15 @@ import {
   Clock,
   AlertTriangle,
   Loader2,
+  FolderTree,
+  Factory,
+  User,
+  Building,
 } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card, Button, Badge, Avatar, Modal, EmptyState } from '../components/common';
-import { equipmentAPI, maintenanceAPI } from '../services/api';
+import { Card, Button, Badge, Avatar, Modal, Input, Select, Textarea } from '../components/common';
+import { equipmentAPI, maintenanceAPI, teamsAPI, categoriesAPI, usersAPI } from '../services/api';
+import { departments, locations } from '../data/constants';
 import { formatDate, cn } from '../utils/helpers';
 
 const EquipmentDetail = () => {
@@ -25,40 +30,123 @@ const EquipmentDetail = () => {
   const navigate = useNavigate();
   const [equipment, setEquipment] = useState(null);
   const [maintenanceRequests, setMaintenanceRequests] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [users, setUsers] = useState([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
 
+  const [formData, setFormData] = useState({
+    name: '',
+    serialNumber: '',
+    department: '',
+    company: '',
+    categoryId: '',
+    employeeId: '',
+    technicianId: '',
+    location: '',
+    maintenanceTeamId: '',
+    purchaseDate: '',
+    warrantyExpiry: '',
+    scrapDate: '',
+    description: '',
+  });
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const equipmentRes = await equipmentAPI.getById(id);
-        const equipmentData = equipmentRes.data?.data || equipmentRes.data;
-        setEquipment(equipmentData);
-
-        try {
-          const requestsRes = await maintenanceAPI.getByEquipment(id);
-          const requestsData = requestsRes.data?.data || requestsRes.data || [];
-          setMaintenanceRequests(requestsData);
-        } catch (reqErr) {
-          console.error('Error fetching maintenance requests:', reqErr);
-          setMaintenanceRequests([]);
-        }
-
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching equipment:', err);
-        setError('Equipment not found');
-        setEquipment(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
   }, [id]);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [equipmentRes, teamsRes, categoriesRes, usersRes] = await Promise.all([
+        equipmentAPI.getById(id),
+        teamsAPI.getAll().catch(() => ({ data: [] })),
+        categoriesAPI.getAll().catch(() => ({ data: [] })),
+        usersAPI.getAll().catch(() => ({ data: [] })),
+      ]);
+
+      const equipmentData = equipmentRes.data?.data || equipmentRes.data;
+      setEquipment(equipmentData);
+      setTeams(teamsRes.data?.data || teamsRes.data || []);
+      setCategories(categoriesRes.data?.data || categoriesRes.data || []);
+      setUsers(usersRes.data?.data || usersRes.data || []);
+
+      try {
+        const requestsRes = await maintenanceAPI.getByEquipment(id);
+        const requestsData = requestsRes.data?.data || requestsRes.data || [];
+        setMaintenanceRequests(requestsData);
+      } catch (reqErr) {
+        console.error('Error fetching maintenance requests:', reqErr);
+        setMaintenanceRequests([]);
+      }
+
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching equipment:', err);
+      setError('Equipment not found');
+      setEquipment(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOpenEdit = () => {
+    if (equipment) {
+      setFormData({
+        name: equipment.name || '',
+        serialNumber: equipment.serial_number || '',
+        department: equipment.department || '',
+        company: equipment.company || '',
+        categoryId: equipment.category_id?.toString() || '',
+        employeeId: equipment.employee_id?.toString() || '',
+        technicianId: equipment.technician_id?.toString() || '',
+        location: equipment.location || '',
+        maintenanceTeamId: equipment.maintenance_team_id?.toString() || '',
+        purchaseDate: equipment.purchase_date || '',
+        warrantyExpiry: equipment.warranty_end || '',
+        scrapDate: equipment.scrap_date || '',
+        description: equipment.description || '',
+      });
+      setShowEditModal(true);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const payload = {
+        name: formData.name,
+        serial_number: formData.serialNumber,
+        department: formData.department || null,
+        company: formData.company || null,
+        location: formData.location || null,
+        description: formData.description || null,
+      };
+
+      if (formData.categoryId) payload.category_id = parseInt(formData.categoryId);
+      if (formData.employeeId) payload.employee_id = parseInt(formData.employeeId);
+      if (formData.technicianId) payload.technician_id = parseInt(formData.technicianId);
+      if (formData.maintenanceTeamId) payload.maintenance_team_id = parseInt(formData.maintenanceTeamId);
+      if (formData.purchaseDate) payload.purchase_date = formData.purchaseDate;
+      if (formData.warrantyExpiry) payload.warranty_end = formData.warrantyExpiry;
+      if (formData.scrapDate) payload.scrap_date = formData.scrapDate;
+
+      await equipmentAPI.update(id, payload);
+      await fetchData();
+      setShowEditModal(false);
+    } catch (err) {
+      console.error('Error saving equipment:', err);
+      const message = err.response?.data?.message || err.message || 'Failed to save equipment';
+      alert(message);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleDelete = async () => {
     try {
@@ -68,11 +156,7 @@ const EquipmentDetail = () => {
     } catch (err) {
       console.error('Error deleting equipment:', err);
       const message = err.response?.data?.message || 'Failed to delete equipment';
-      if (err.response?.status === 403) {
-        alert('Permission denied. Only administrators can delete equipment.');
-      } else {
-        alert(message);
-      }
+      alert(message);
     } finally {
       setDeleting(false);
     }
@@ -94,83 +178,63 @@ const EquipmentDetail = () => {
       <div>
         <Header title="Equipment Not Found" />
         <div className="p-6">
-          <EmptyState
-            title="Equipment not found"
-            description="The equipment you're looking for doesn't exist or has been removed."
-            action={
-              <Button onClick={() => navigate('/equipment')}>
-                Back to Equipment
-              </Button>
-            }
-          />
+          <Card className="text-center py-12">
+            <AlertTriangle className="w-16 h-16 text-rose-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-white mb-2">Equipment not found</h2>
+            <p className="text-gray-400 mb-6">The equipment you're looking for doesn't exist or has been removed.</p>
+            <Button onClick={() => navigate('/equipment')}>Back to Equipment</Button>
+          </Card>
         </div>
       </div>
     );
   }
 
-  const getStatusBadge = () => {
-    return (
-      <Badge variant={equipment.is_scrapped ? 'danger' : 'success'} size="lg">
-        {equipment.is_scrapped ? 'Scrapped' : 'Operational'}
-      </Badge>
-    );
-  };
+  const getStatusBadge = () => (
+    <Badge variant={equipment.is_scrapped ? 'danger' : 'success'} size="lg">
+      {equipment.is_scrapped ? 'Scrapped' : 'Operational'}
+    </Badge>
+  );
 
   const getRequestStatusBadge = (status) => {
     const statusKey = status?.toLowerCase().replace(' ', '_') || 'new';
-    const variants = {
-      new: 'info',
-      in_progress: 'warning',
-      repaired: 'success',
-      scrap: 'danger',
-    };
+    const variants = { new: 'info', in_progress: 'warning', repaired: 'success', scrap: 'danger' };
     return <Badge variant={variants[statusKey] || 'default'}>{status || 'New'}</Badge>;
   };
 
   const isWarrantyExpired = equipment.warranty_end && new Date(equipment.warranty_end) < new Date();
-  const openRequests = maintenanceRequests.filter(
-    (r) => r.status === 'New' || r.status === 'In Progress'
-  );
+  const openRequests = maintenanceRequests.filter(r => r.status === 'New' || r.status === 'In Progress');
 
   const infoItems = [
     { icon: FileText, label: 'Serial Number', value: equipment.serial_number || '-' },
-    { icon: Building2, label: 'Manufacturer', value: `${equipment.manufacturer || ''} ${equipment.model || ''}`.trim() || '-' },
+    { icon: FolderTree, label: 'Category', value: equipment.category?.name || '-', link: equipment.category_id ? `/equipment-categories?highlight=${equipment.category_id}` : null },
+    { icon: User, label: 'Employee', value: equipment.employee?.name || '-' },
+    { icon: Wrench, label: 'Technician', value: equipment.technician?.name || '-' },
+    { icon: Building2, label: 'Department', value: equipment.department || '-' },
+    { icon: Building, label: 'Company', value: equipment.company || '-' },
     { icon: MapPin, label: 'Location', value: equipment.location || '-' },
-    { icon: Building2, label: 'Department', value: equipment.department_or_owner || '-' },
-    { icon: Users, label: 'Owner', value: equipment.department_or_owner || '-' },
+    { icon: Factory, label: 'Work Center', value: equipment.workCenter?.name || '-' },
     { icon: Users, label: 'Maintenance Team', value: equipment.maintenanceTeam?.name || '-' },
     { icon: Calendar, label: 'Purchase Date', value: equipment.purchase_date ? formatDate(equipment.purchase_date) : '-' },
-    {
-      icon: Shield,
-      label: 'Warranty Expiry',
-      value: equipment.warranty_end ? formatDate(equipment.warranty_end) : '-',
-      alert: isWarrantyExpired,
-    },
+    { icon: Shield, label: 'Warranty Expiry', value: equipment.warranty_end ? formatDate(equipment.warranty_end) : '-', alert: isWarrantyExpired },
+    { icon: AlertTriangle, label: 'Scrap Date', value: equipment.scrap_date ? formatDate(equipment.scrap_date) : '-' },
   ];
 
   return (
     <div>
-      <Header title={equipment.name} subtitle={`${equipment.manufacturer || ''} ${equipment.model || ''}`.trim()} />
+      <Header title={equipment.name} subtitle={equipment.category?.name || equipment.company || 'Equipment Details'} />
 
       <div className="p-6">
         {/* Back button and actions */}
         <div className="flex items-center justify-between mb-6">
-          <Link
-            to="/equipment"
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
-          >
+          <Link to="/equipment" className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
             <ArrowLeft className="w-4 h-4" />
             Back to Equipment
           </Link>
           <div className="flex items-center gap-3">
-            <Button variant="secondary" leftIcon={<Edit className="w-4 h-4" />}>
+            <Button variant="secondary" leftIcon={<Edit className="w-4 h-4" />} onClick={handleOpenEdit}>
               Edit
             </Button>
-            <Button
-              variant="danger"
-              leftIcon={<Trash2 className="w-4 h-4" />}
-              onClick={() => setShowDeleteConfirm(true)}
-            >
+            <Button variant="danger" leftIcon={<Trash2 className="w-4 h-4" />} onClick={() => setShowDeleteConfirm(true)}>
               Delete
             </Button>
           </div>
@@ -183,14 +247,12 @@ const EquipmentDetail = () => {
             <Card>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 bg-primary-500/20 rounded-xl flex items-center justify-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary-500/20 to-cyan-500/20 rounded-xl flex items-center justify-center">
                     <Wrench className="w-8 h-8 text-primary-400" />
                   </div>
                   <div>
                     <h2 className="text-xl font-semibold text-white">{equipment.name}</h2>
-                    <p className="text-gray-400">
-                      {equipment.manufacturer} {equipment.model}
-                    </p>
+                    <p className="text-gray-400">{equipment.serial_number}</p>
                   </div>
                 </div>
                 {getStatusBadge()}
@@ -199,35 +261,39 @@ const EquipmentDetail = () => {
 
             {/* Details Card */}
             <Card>
-              <h3 className="text-lg font-semibold text-white mb-4">Equipment Details</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">Equipment Details</h3>
+                <Button variant="ghost" size="sm" leftIcon={<Edit className="w-4 h-4" />} onClick={handleOpenEdit}>
+                  Edit Details
+                </Button>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 {infoItems.map((item) => (
-                  <div key={item.label} className="flex items-start gap-3">
-                    <div className="p-2 bg-dark-900/50 rounded-xl border border-dark-700/50">
+                  <div key={item.label} className="flex items-start gap-3 p-3 bg-dark-900/30 rounded-xl">
+                    <div className="p-2 bg-dark-800/50 rounded-lg border border-dark-700/50">
                       <item.icon className="w-4 h-4 text-gray-400" />
                     </div>
-                    <div>
-                      <p className="text-sm text-gray-500">{item.label}</p>
-                      <p
-                        className={cn(
-                          'text-sm font-medium',
-                          item.alert ? 'text-rose-400' : 'text-gray-200'
-                        )}
-                      >
-                        {item.value}
-                        {item.alert && (
-                          <span className="ml-2 text-xs text-rose-400">(Expired)</span>
-                        )}
-                      </p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">{item.label}</p>
+                      {item.link ? (
+                        <Link to={item.link} className="text-sm font-medium text-primary-400 hover:text-primary-300 transition-colors">
+                          {item.value}
+                        </Link>
+                      ) : (
+                        <p className={cn('text-sm font-medium truncate', item.alert ? 'text-rose-400' : 'text-gray-200')}>
+                          {item.value}
+                          {item.alert && <span className="ml-1 text-xs">(Expired)</span>}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}
               </div>
 
-              {equipment.notes && (
+              {equipment.description && (
                 <div className="mt-6 pt-6 border-t border-dark-700/50">
-                  <h4 className="text-sm font-medium text-gray-200 mb-2">Notes</h4>
-                  <p className="text-sm text-gray-400">{equipment.notes}</p>
+                  <h4 className="text-sm font-medium text-gray-200 mb-2">Description</h4>
+                  <p className="text-sm text-gray-400">{equipment.description}</p>
                 </div>
               )}
             </Card>
@@ -235,11 +301,8 @@ const EquipmentDetail = () => {
             {/* Maintenance Requests */}
             <Card>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-white">Maintenance Requests</h3>
-                <Link
-                  to="/maintenance"
-                  className="text-sm text-primary-400 hover:text-primary-300 font-medium transition-colors"
-                >
+                <h3 className="text-lg font-semibold text-white">Maintenance History</h3>
+                <Link to="/maintenance" className="text-sm text-primary-400 hover:text-primary-300 font-medium transition-colors">
                   View all →
                 </Link>
               </div>
@@ -257,16 +320,11 @@ const EquipmentDetail = () => {
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        {request.isOverdue && (
-                          <AlertTriangle className="w-5 h-5 text-rose-400" />
-                        )}
+                        {request.isOverdue && <AlertTriangle className="w-5 h-5 text-rose-400" />}
                         <div>
                           <p className="text-sm font-medium text-gray-200">{request.subject}</p>
                           <div className="flex items-center gap-2 mt-1">
-                            <Badge
-                              variant={request.type === 'Preventive' ? 'info' : 'warning'}
-                              size="sm"
-                            >
+                            <Badge variant={request.type === 'Preventive' ? 'info' : 'warning'} size="sm">
                               {request.type}
                             </Badge>
                             {request.scheduled_date && (
@@ -286,23 +344,19 @@ const EquipmentDetail = () => {
                   ))}
                 </div>
               ) : (
-                <EmptyState
-                  icon={Wrench}
-                  title="No maintenance requests"
-                  description="This equipment has no maintenance history."
-                  action={
-                    <Link to="/maintenance">
-                      <Button size="sm">Create Request</Button>
-                    </Link>
-                  }
-                />
+                <div className="text-center py-8">
+                  <Wrench className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-400 mb-4">No maintenance history</p>
+                  <Link to="/maintenance">
+                    <Button size="sm">Create Request</Button>
+                  </Link>
+                </div>
               )}
             </Card>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Maintenance Smart Button */}
             <Card className="bg-gradient-to-br from-primary-600 to-cyan-600 border-0">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -321,38 +375,28 @@ const EquipmentDetail = () => {
               </Link>
             </Card>
 
-            {/* Quick Stats */}
             <Card>
               <h3 className="text-sm font-semibold text-white mb-4">Quick Stats</h3>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Total Requests</span>
-                  <span className="text-sm font-medium text-gray-200">
-                    {maintenanceRequests.length}
-                  </span>
+                  <span className="text-sm font-medium text-gray-200">{maintenanceRequests.length}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Completed</span>
                   <span className="text-sm font-medium text-emerald-400">
-                    {maintenanceRequests.filter((r) => r.status === 'Repaired').length}
+                    {maintenanceRequests.filter(r => r.status === 'Repaired').length}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">In Progress</span>
                   <span className="text-sm font-medium text-amber-400">
-                    {maintenanceRequests.filter((r) => r.status === 'In Progress').length}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Overdue</span>
-                  <span className="text-sm font-medium text-rose-400">
-                    {maintenanceRequests.filter((r) => r.isOverdue).length}
+                    {maintenanceRequests.filter(r => r.status === 'In Progress').length}
                   </span>
                 </div>
               </div>
             </Card>
 
-            {/* Warranty Alert */}
             {isWarrantyExpired && (
               <Card className="bg-rose-500/10 border-rose-500/30">
                 <div className="flex items-start gap-3">
@@ -360,8 +404,7 @@ const EquipmentDetail = () => {
                   <div>
                     <h4 className="text-sm font-medium text-rose-300">Warranty Expired</h4>
                     <p className="text-sm text-rose-400/80 mt-1">
-                      This equipment's warranty expired on {formatDate(equipment.warranty_end)}.
-                      Consider reviewing maintenance contracts.
+                      Expired on {formatDate(equipment.warranty_end)}. Consider reviewing maintenance contracts.
                     </p>
                   </div>
                 </div>
@@ -370,6 +413,116 @@ const EquipmentDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Equipment"
+        size="lg"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowEditModal(false)} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </>
+        }
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Equipment Name"
+            value={formData.name}
+            onChange={(v) => setFormData({ ...formData, name: v })}
+            placeholder="e.g., Samsung Monitor 15'"
+            required
+          />
+          <Input
+            label="Serial Number"
+            value={formData.serialNumber}
+            onChange={(v) => setFormData({ ...formData, serialNumber: v })}
+            placeholder="e.g., MT/125/22778837"
+            required
+          />
+          <Select
+            label="Employee"
+            value={formData.employeeId}
+            onChange={(v) => setFormData({ ...formData, employeeId: v })}
+            options={users.map((u) => ({ value: u.id.toString(), label: u.name }))}
+            placeholder="Select employee"
+          />
+          <Select
+            label="Technician"
+            value={formData.technicianId}
+            onChange={(v) => setFormData({ ...formData, technicianId: v })}
+            options={users.filter(u => u.role === 'technician' || u.role === 'admin').map((u) => ({ value: u.id.toString(), label: u.name }))}
+            placeholder="Select technician"
+          />
+          <Select
+            label="Department"
+            value={formData.department}
+            onChange={(v) => setFormData({ ...formData, department: v })}
+            options={departments.map((d) => ({ value: d, label: d }))}
+            placeholder="Select department"
+          />
+          <Select
+            label="Equipment Category"
+            value={formData.categoryId}
+            onChange={(v) => setFormData({ ...formData, categoryId: v })}
+            options={categories.map((c) => ({ value: c.id.toString(), label: c.name }))}
+            placeholder="Select category"
+          />
+          <Input
+            label="Company"
+            value={formData.company}
+            onChange={(v) => setFormData({ ...formData, company: v })}
+            placeholder="e.g., My Company (San Francisco)"
+          />
+          <Select
+            label="Location"
+            value={formData.location}
+            onChange={(v) => setFormData({ ...formData, location: v })}
+            options={locations.map((l) => ({ value: l, label: l }))}
+            placeholder="Select location"
+          />
+          <Input
+            label="Purchase Date"
+            type="date"
+            value={formData.purchaseDate}
+            onChange={(v) => setFormData({ ...formData, purchaseDate: v })}
+          />
+          <Input
+            label="Warranty Expiry"
+            type="date"
+            value={formData.warrantyExpiry}
+            onChange={(v) => setFormData({ ...formData, warrantyExpiry: v })}
+          />
+          <Input
+            label="Scrap Date"
+            type="date"
+            value={formData.scrapDate}
+            onChange={(v) => setFormData({ ...formData, scrapDate: v })}
+          />
+          <Select
+            label="Maintenance Team"
+            value={formData.maintenanceTeamId}
+            onChange={(v) => setFormData({ ...formData, maintenanceTeamId: v })}
+            options={teams.map((t) => ({ value: t.id.toString(), label: t.name }))}
+            placeholder="Assign team"
+          />
+          <div className="col-span-2">
+            <Textarea
+              label="Description"
+              value={formData.description}
+              onChange={(v) => setFormData({ ...formData, description: v })}
+              placeholder="Additional notes about this equipment..."
+              rows={3}
+            />
+          </div>
+        </div>
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal
@@ -382,11 +535,7 @@ const EquipmentDetail = () => {
             <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>
               Cancel
             </Button>
-            <Button
-              variant="danger"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
+            <Button variant="danger" onClick={handleDelete} disabled={deleting}>
               {deleting ? 'Deleting...' : 'Delete'}
             </Button>
           </>
