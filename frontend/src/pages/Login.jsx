@@ -25,7 +25,15 @@ const Login = () => {
     if (result.success) {
       navigate('/');
     } else {
-      setError(result.error || 'Invalid credentials');
+      // Display specific error messages based on backend response
+      const errorMsg = result.error?.toLowerCase() || '';
+      if (errorMsg.includes('not found') || errorMsg.includes('no user') || errorMsg.includes('email')) {
+        setError('Account does not exist');
+      } else if (errorMsg.includes('password') || errorMsg.includes('invalid') || errorMsg.includes('incorrect')) {
+        setError('Invalid Password');
+      } else {
+        setError(result.error || 'Login failed. Please check your credentials.');
+      }
     }
   };
 

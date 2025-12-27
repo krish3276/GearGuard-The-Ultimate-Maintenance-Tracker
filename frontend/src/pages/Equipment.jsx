@@ -6,22 +6,23 @@ import {
   Eye,
   Edit,
   Trash2,
-  Wrench,
   Loader2,
   AlertTriangle,
 } from 'lucide-react';
 import { Header } from '../components/layout';
 import { Card, Button, Badge, SearchInput, Modal, Input, Select, Textarea } from '../components/common';
-import { equipmentAPI, teamsAPI } from '../services/api';
-import { departments, locations, equipmentStatusColors } from '../data/constants';
+import { equipmentAPI, teamsAPI, categoriesAPI, usersAPI } from '../services/api';
+import { departments, locations } from '../data/constants';
 import { formatDate, cn } from '../utils/helpers';
 
 const Equipment = () => {
   const [equipment, setEquipment] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState(null);
@@ -33,15 +34,17 @@ const Equipment = () => {
   const [formData, setFormData] = useState({
     name: '',
     serialNumber: '',
-    model: '',
-    manufacturer: '',
+    department: '',
+    company: '',
+    categoryId: '',
+    employeeId: '',
+    technicianId: '',
+    location: '',
+    maintenanceTeamId: '',
     purchaseDate: '',
     warrantyExpiry: '',
-    location: '',
-    department: '',
-    maintenanceTeamId: '',
-    owner: '',
-    notes: '',
+    scrapDate: '',
+    description: '',
   });
 
   useEffect(() => {
@@ -51,12 +54,16 @@ const Equipment = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [equipmentRes, teamsRes] = await Promise.all([
+      const [equipmentRes, teamsRes, categoriesRes, usersRes] = await Promise.all([
         equipmentAPI.getAll(),
         teamsAPI.getAll(),
+        categoriesAPI.getAll().catch(() => ({ data: [] })),
+        usersAPI.getAll().catch(() => ({ data: [] })),
       ]);
       setEquipment(equipmentRes.data?.data || equipmentRes.data || []);
       setTeams(teamsRes.data?.data || teamsRes.data || []);
+      setCategories(categoriesRes.data?.data || categoriesRes.data || []);
+      setUsers(usersRes.data?.data || usersRes.data || []);
       setError(null);
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -72,28 +79,31 @@ const Equipment = () => {
         !searchTerm ||
         item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.serial_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.department_or_owner?.toLowerCase().includes(searchTerm.toLowerCase());
+        item.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.company?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesDepartment = !filterDepartment || item.department_or_owner === filterDepartment;
-      const matchesStatus = !filterStatus || (item.is_scrapped ? 'offline' : 'operational') === filterStatus;
+      const matchesDepartment = !filterDepartment || item.department === filterDepartment;
+      const matchesCategory = !filterCategory || item.category_id?.toString() === filterCategory;
 
-      return matchesSearch && matchesDepartment && matchesStatus;
+      return matchesSearch && matchesDepartment && matchesCategory;
     });
-  }, [equipment, searchTerm, filterDepartment, filterStatus]);
+  }, [equipment, searchTerm, filterDepartment, filterCategory]);
 
   const resetForm = () => {
     setFormData({
       name: '',
       serialNumber: '',
-      model: '',
-      manufacturer: '',
+      department: '',
+      company: '',
+      categoryId: '',
+      employeeId: '',
+      technicianId: '',
+      location: '',
+      maintenanceTeamId: '',
       purchaseDate: '',
       warrantyExpiry: '',
-      location: '',
-      department: '',
-      maintenanceTeamId: '',
-      owner: '',
-      notes: '',
+      scrapDate: '',
+      description: '',
     });
     setSelectedEquipment(null);
   };
@@ -104,15 +114,17 @@ const Equipment = () => {
       setFormData({
         name: item.name || '',
         serialNumber: item.serial_number || '',
-        model: item.model || '',
-        manufacturer: item.manufacturer || '',
+        department: item.department || '',
+        company: item.company || '',
+        categoryId: item.category_id?.toString() || '',
+        employeeId: item.employee_id?.toString() || '',
+        technicianId: item.technician_id?.toString() || '',
+        location: item.location || '',
+        maintenanceTeamId: item.maintenance_team_id?.toString() || '',
         purchaseDate: item.purchase_date || '',
         warrantyExpiry: item.warranty_end || '',
-        location: item.location || '',
-        department: item.department_or_owner || '',
-        maintenanceTeamId: item.maintenance_team_id?.toString() || '',
-        owner: item.department_or_owner || '',
-        notes: item.notes || '',
+        scrapDate: item.scrap_date || '',
+        description: item.description || '',
       });
     } else {
       resetForm();
@@ -126,13 +138,19 @@ const Equipment = () => {
       const payload = {
         name: formData.name,
         serial_number: formData.serialNumber,
-        location: formData.location || undefined,
-        department_or_owner: formData.department || formData.owner || undefined,
+        department: formData.department || null,
+        company: formData.company || null,
+        location: formData.location || null,
+        description: formData.description || null,
       };
 
+      if (formData.categoryId) payload.category_id = parseInt(formData.categoryId);
+      if (formData.employeeId) payload.employee_id = parseInt(formData.employeeId);
+      if (formData.technicianId) payload.technician_id = parseInt(formData.technicianId);
+      if (formData.maintenanceTeamId) payload.maintenance_team_id = parseInt(formData.maintenanceTeamId);
       if (formData.purchaseDate) payload.purchase_date = formData.purchaseDate;
       if (formData.warrantyExpiry) payload.warranty_end = formData.warrantyExpiry;
-      if (formData.maintenanceTeamId) payload.maintenance_team_id = parseInt(formData.maintenanceTeamId);
+      if (formData.scrapDate) payload.scrap_date = formData.scrapDate;
 
       if (selectedEquipment) {
         await equipmentAPI.update(selectedEquipment.id, payload);
@@ -162,25 +180,20 @@ const Equipment = () => {
     } catch (err) {
       console.error('Error deleting equipment:', err);
       const message = err.response?.data?.message || err.message || 'Failed to delete equipment';
-      if (err.response?.status === 403) {
-        alert('Permission denied. Only administrators can delete equipment.');
-      } else if (err.response?.status === 401) {
-        alert('Please log in again to perform this action.');
-      } else {
-        alert(message);
-      }
+      alert(message);
     } finally {
       setSaving(false);
     }
   };
 
-  const getStatusBadge = (item) => {
-    const status = item.is_scrapped ? 'offline' : 'operational';
-    return (
-      <Badge variant={item.is_scrapped ? 'danger' : 'success'}>
-        {item.is_scrapped ? 'Scrapped' : 'Operational'}
-      </Badge>
-    );
+  const getUserName = (userId) => {
+    const user = users.find(u => u.id === userId);
+    return user?.name || '-';
+  };
+
+  const getCategoryName = (categoryId) => {
+    const category = categories.find(c => c.id === categoryId);
+    return category?.name || '-';
   };
 
   if (loading) {
@@ -217,12 +230,18 @@ const Equipment = () => {
         <Card>
           {/* Toolbar */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-3 flex-1">
+            <div className="flex items-center gap-3">
+              <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => handleOpenModal()}>
+                New
+              </Button>
+              <span className="text-lg font-semibold text-white">Equipment</span>
+            </div>
+            <div className="flex items-center gap-3 flex-1 justify-end">
               <SearchInput
                 value={searchTerm}
                 onChange={setSearchTerm}
                 onClear={() => setSearchTerm('')}
-                placeholder="Search equipment..."
+                placeholder="Search..."
                 className="w-full md:w-80"
               />
               <Button
@@ -233,9 +252,6 @@ const Equipment = () => {
                 Filters
               </Button>
             </div>
-            <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => handleOpenModal()}>
-              Add Equipment
-            </Button>
           </div>
 
           {/* Filters */}
@@ -249,14 +265,10 @@ const Equipment = () => {
                 className="w-48"
               />
               <Select
-                value={filterStatus}
-                onChange={setFilterStatus}
-                placeholder="All Status"
-                options={[
-                  { value: 'operational', label: 'Operational' },
-                  { value: 'maintenance', label: 'Under Maintenance' },
-                  { value: 'offline', label: 'Offline' },
-                ]}
+                value={filterCategory}
+                onChange={setFilterCategory}
+                placeholder="All Categories"
+                options={categories.map((c) => ({ value: c.id.toString(), label: c.name }))}
                 className="w-48"
               />
               <Button
@@ -264,7 +276,7 @@ const Equipment = () => {
                 size="sm"
                 onClick={() => {
                   setFilterDepartment('');
-                  setFilterStatus('');
+                  setFilterCategory('');
                 }}
               >
                 Clear Filters
@@ -277,14 +289,13 @@ const Equipment = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-dark-700/50">
-                  <th className="table-header">Equipment</th>
-                  <th className="table-header">Serial Number</th>
-                  <th className="table-header">Location</th>
+                  <th className="table-header">Equipment Name</th>
+                  <th className="table-header">Employee</th>
                   <th className="table-header">Department</th>
-                  <th className="table-header">Status</th>
-                  <th className="table-header">Maintenance Team</th>
-                  <th className="table-header">Warranty</th>
-                  <th className="table-header text-center">Requests</th>
+                  <th className="table-header">Serial Number</th>
+                  <th className="table-header">Technician</th>
+                  <th className="table-header">Equipment Category</th>
+                  <th className="table-header">Company</th>
                   <th className="table-header">Actions</th>
                 </tr>
               </thead>
@@ -292,47 +303,34 @@ const Equipment = () => {
                 {filteredEquipment.map((item) => (
                   <tr key={item.id} className="hover:bg-glass-white transition-colors">
                     <td className="table-cell">
-                      <div>
-                        <Link
-                          to={`/equipment/${item.id}`}
-                          className="font-medium text-gray-200 hover:text-primary-400 transition-colors"
-                        >
-                          {item.name}
-                        </Link>
-                        <p className="text-xs text-gray-500">{item.manufacturer} {item.model}</p>
-                      </div>
-                    </td>
-                    <td className="table-cell font-mono text-sm text-gray-400">{item.serial_number || '-'}</td>
-                    <td className="table-cell text-gray-400">{item.location || '-'}</td>
-                    <td className="table-cell text-gray-400">{item.department_or_owner || '-'}</td>
-                    <td className="table-cell">{getStatusBadge(item)}</td>
-                    <td className="table-cell text-gray-400">{item.maintenanceTeam?.name || '-'}</td>
-                    <td className="table-cell">
-                      <span
-                        className={cn(
-                          'text-sm',
-                          item.warranty_end && new Date(item.warranty_end) < new Date()
-                            ? 'text-rose-400'
-                            : 'text-gray-400'
-                        )}
-                      >
-                        {item.warranty_end ? formatDate(item.warranty_end) : '-'}
-                      </span>
-                    </td>
-                    <td className="table-cell text-center">
                       <Link
                         to={`/equipment/${item.id}`}
-                        className={cn(
-                          'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-sm font-medium transition-colors',
-                          (item.openMaintenanceCount || 0) > 0
-                            ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'
-                            : 'bg-dark-700/50 text-gray-400 hover:bg-dark-700'
-                        )}
+                        className="font-medium text-gray-200 hover:text-primary-400 transition-colors"
                       >
-                        <Wrench className="w-3.5 h-3.5" />
-                        {item.openMaintenanceCount || 0}
+                        {item.name}
                       </Link>
                     </td>
+                    <td className="table-cell text-gray-400">
+                      {item.employee?.name || getUserName(item.employee_id)}
+                    </td>
+                    <td className="table-cell text-gray-400">{item.department || '-'}</td>
+                    <td className="table-cell font-mono text-sm text-gray-400">{item.serial_number || '-'}</td>
+                    <td className="table-cell text-gray-400">
+                      {item.technician?.name || getUserName(item.technician_id)}
+                    </td>
+                    <td className="table-cell">
+                      {(item.category?.name || item.category_id) ? (
+                        <Link
+                          to={`/equipment-categories?highlight=${item.category_id || ''}`}
+                          className="text-primary-400 hover:text-primary-300 hover:underline transition-colors"
+                        >
+                          {item.category?.name || getCategoryName(item.category_id)}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="table-cell text-gray-400">{item.company || '-'}</td>
                     <td className="table-cell">
                       <div className="flex items-center gap-1">
                         <Link
@@ -397,27 +395,56 @@ const Equipment = () => {
             label="Equipment Name"
             value={formData.name}
             onChange={(v) => setFormData({ ...formData, name: v })}
-            placeholder="e.g., CNC Milling Machine"
+            placeholder="e.g., Samsung Monitor 15'"
             required
           />
           <Input
             label="Serial Number"
             value={formData.serialNumber}
             onChange={(v) => setFormData({ ...formData, serialNumber: v })}
-            placeholder="e.g., CNC-2024-001"
+            placeholder="e.g., MT/125/22778837"
             required
           />
-          <Input
-            label="Manufacturer"
-            value={formData.manufacturer}
-            onChange={(v) => setFormData({ ...formData, manufacturer: v })}
-            placeholder="e.g., Haas Automation"
+          <Select
+            label="Employee"
+            value={formData.employeeId}
+            onChange={(v) => setFormData({ ...formData, employeeId: v })}
+            options={users.map((u) => ({ value: u.id.toString(), label: u.name }))}
+            placeholder="Select employee"
+          />
+          <Select
+            label="Technician"
+            value={formData.technicianId}
+            onChange={(v) => setFormData({ ...formData, technicianId: v })}
+            options={users.filter(u => u.role === 'technician' || u.role === 'admin').map((u) => ({ value: u.id.toString(), label: u.name }))}
+            placeholder="Select technician"
+          />
+          <Select
+            label="Department"
+            value={formData.department}
+            onChange={(v) => setFormData({ ...formData, department: v })}
+            options={departments.map((d) => ({ value: d, label: d }))}
+            placeholder="Select department"
+          />
+          <Select
+            label="Equipment Category"
+            value={formData.categoryId}
+            onChange={(v) => setFormData({ ...formData, categoryId: v })}
+            options={categories.map((c) => ({ value: c.id.toString(), label: c.name }))}
+            placeholder="Select category"
           />
           <Input
-            label="Model"
-            value={formData.model}
-            onChange={(v) => setFormData({ ...formData, model: v })}
-            placeholder="e.g., VF-2"
+            label="Company"
+            value={formData.company}
+            onChange={(v) => setFormData({ ...formData, company: v })}
+            placeholder="e.g., My Company (San Francisco)"
+          />
+          <Select
+            label="Location"
+            value={formData.location}
+            onChange={(v) => setFormData({ ...formData, location: v })}
+            options={locations.map((l) => ({ value: l, label: l }))}
+            placeholder="Select location"
           />
           <Input
             label="Purchase Date"
@@ -431,19 +458,11 @@ const Equipment = () => {
             value={formData.warrantyExpiry}
             onChange={(v) => setFormData({ ...formData, warrantyExpiry: v })}
           />
-          <Select
-            label="Location"
-            value={formData.location}
-            onChange={(v) => setFormData({ ...formData, location: v })}
-            options={locations.map((l) => ({ value: l, label: l }))}
-            placeholder="Select location"
-          />
-          <Select
-            label="Department"
-            value={formData.department}
-            onChange={(v) => setFormData({ ...formData, department: v })}
-            options={departments.map((d) => ({ value: d, label: d }))}
-            placeholder="Select department"
+          <Input
+            label="Scrap Date"
+            type="date"
+            value={formData.scrapDate}
+            onChange={(v) => setFormData({ ...formData, scrapDate: v })}
           />
           <Select
             label="Maintenance Team"
@@ -452,17 +471,11 @@ const Equipment = () => {
             options={teams.map((t) => ({ value: t.id.toString(), label: t.name }))}
             placeholder="Assign team"
           />
-          <Input
-            label="Owner"
-            value={formData.owner}
-            onChange={(v) => setFormData({ ...formData, owner: v })}
-            placeholder="Equipment owner"
-          />
           <div className="col-span-2">
             <Textarea
-              label="Notes"
-              value={formData.notes}
-              onChange={(v) => setFormData({ ...formData, notes: v })}
+              label="Description"
+              value={formData.description}
+              onChange={(v) => setFormData({ ...formData, description: v })}
               placeholder="Additional notes..."
               rows={3}
             />

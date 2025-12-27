@@ -36,8 +36,21 @@ const Signup = () => {
             return;
         }
 
-        if (formData.password.length < 6) {
-            setError('Password must be at least 6 characters');
+        // Password complexity validation
+        if (formData.password.length < 8) {
+            setError('Password must be at least 8 characters long');
+            return;
+        }
+        if (!/[A-Z]/.test(formData.password)) {
+            setError('Password must contain at least one uppercase letter');
+            return;
+        }
+        if (!/[a-z]/.test(formData.password)) {
+            setError('Password must contain at least one lowercase letter');
+            return;
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
+            setError('Password must contain at least one special character');
             return;
         }
 
@@ -51,7 +64,12 @@ const Signup = () => {
         if (result.success) {
             navigate('/');
         } else {
-            setError(result.error);
+            // Show specific error messages based on backend response
+            if (result.error?.includes('email') || result.error?.includes('Email')) {
+                setError('Email already exists. Please use a different email.');
+            } else {
+                setError(result.error || 'Registration failed');
+            }
         }
     };
 

@@ -1,15 +1,27 @@
-const { Equipment, MaintenanceTeam } = require('../models');
+const { Equipment, MaintenanceTeam, User, EquipmentCategory, WorkCenter } = require('../models');
 const { NotFoundError, ConflictError } = require('../utils/errors');
 
 const getAllEquipment = async () => {
   return Equipment.findAll({
-    include: [{ model: MaintenanceTeam, as: 'maintenanceTeam' }]
+    include: [
+      { model: MaintenanceTeam, as: 'maintenanceTeam' },
+      { model: EquipmentCategory, as: 'category' },
+      { model: User, as: 'employee', attributes: ['id', 'name', 'email'] },
+      { model: User, as: 'technician', attributes: ['id', 'name', 'email'] },
+      { model: WorkCenter, as: 'workCenter' }
+    ]
   });
 };
 
 const getEquipmentById = async (id) => {
   const equipment = await Equipment.findByPk(id, {
-    include: [{ model: MaintenanceTeam, as: 'maintenanceTeam' }]
+    include: [
+      { model: MaintenanceTeam, as: 'maintenanceTeam' },
+      { model: EquipmentCategory, as: 'category' },
+      { model: User, as: 'employee', attributes: ['id', 'name', 'email'] },
+      { model: User, as: 'technician', attributes: ['id', 'name', 'email'] },
+      { model: WorkCenter, as: 'workCenter' }
+    ]
   });
   if (!equipment) {
     throw new NotFoundError('Equipment not found');
@@ -32,7 +44,29 @@ const createEquipment = async (equipmentData) => {
     }
   }
 
-  return Equipment.create(equipmentData);
+  if (equipmentData.category_id) {
+    const category = await EquipmentCategory.findByPk(equipmentData.category_id);
+    if (!category) {
+      throw new NotFoundError('Equipment category not found');
+    }
+  }
+
+  if (equipmentData.employee_id) {
+    const employee = await User.findByPk(equipmentData.employee_id);
+    if (!employee) {
+      throw new NotFoundError('Employee not found');
+    }
+  }
+
+  if (equipmentData.technician_id) {
+    const technician = await User.findByPk(equipmentData.technician_id);
+    if (!technician) {
+      throw new NotFoundError('Technician not found');
+    }
+  }
+
+  const equipment = await Equipment.create(equipmentData);
+  return getEquipmentById(equipment.id);
 };
 
 const updateEquipment = async (id, equipmentData) => {
@@ -50,7 +84,6 @@ const updateEquipment = async (id, equipmentData) => {
     }
   }
 
-  // Validate maintenance team if provided (allow null to unassign)
   if (equipmentData.maintenance_team_id !== undefined && equipmentData.maintenance_team_id !== null) {
     const team = await MaintenanceTeam.findByPk(equipmentData.maintenance_team_id);
     if (!team) {
@@ -58,9 +91,28 @@ const updateEquipment = async (id, equipmentData) => {
     }
   }
 
+  if (equipmentData.category_id !== undefined && equipmentData.category_id !== null) {
+    const category = await EquipmentCategory.findByPk(equipmentData.category_id);
+    if (!category) {
+      throw new NotFoundError('Equipment category not found');
+    }
+  }
+
+  if (equipmentData.employee_id !== undefined && equipmentData.employee_id !== null) {
+    const employee = await User.findByPk(equipmentData.employee_id);
+    if (!employee) {
+      throw new NotFoundError('Employee not found');
+    }
+  }
+
+  if (equipmentData.technician_id !== undefined && equipmentData.technician_id !== null) {
+    const technician = await User.findByPk(equipmentData.technician_id);
+    if (!technician) {
+      throw new NotFoundError('Technician not found');
+    }
+  }
+
   await equipment.update(equipmentData);
-  
-  // Return updated equipment with associations
   return getEquipmentById(id);
 };
 

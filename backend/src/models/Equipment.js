@@ -22,6 +22,38 @@ const Equipment = sequelize.define('Equipment', {
       notEmpty: { msg: 'Serial number is required' }
     }
   },
+  category_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'equipment_categories',
+      key: 'id'
+    }
+  },
+  company: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  department: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  employee_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
+  technician_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id'
+    }
+  },
   purchase_date: {
     type: DataTypes.DATEONLY,
     allowNull: true
@@ -30,9 +62,25 @@ const Equipment = sequelize.define('Equipment', {
     type: DataTypes.DATEONLY,
     allowNull: true
   },
+  assigned_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
+  scrap_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
   location: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  work_center_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'work_centers',
+      key: 'id'
+    }
   },
   department_or_owner: {
     type: DataTypes.STRING,
@@ -45,6 +93,10 @@ const Equipment = sequelize.define('Equipment', {
       model: 'maintenance_teams',
       key: 'id'
     }
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true
   },
   is_scrapped: {
     type: DataTypes.BOOLEAN,
