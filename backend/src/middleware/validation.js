@@ -77,15 +77,28 @@ const maintenanceRequestValidation = {
     body('type').isIn(['Corrective', 'Preventive']).withMessage('Type must be Corrective or Preventive'),
     body('subject').trim().notEmpty().withMessage('Subject is required'),
     body('equipment_id').isInt({ min: 1 }).withMessage('Valid equipment ID is required'),
+    body('maintenance_team_id').optional().isInt({ min: 1 }).withMessage('Invalid maintenance team ID'),
+    body('assigned_technician_id').optional().isInt({ min: 1 }).withMessage('Invalid technician ID'),
     body('scheduled_date').optional().isISO8601().withMessage('Invalid scheduled date'),
     body('duration_hours').optional().isFloat({ min: 0 }).withMessage('Duration must be positive'),
+    body('description').optional().trim(),
+    body('priority').optional().isIn(['low', 'medium', 'high', 'critical']).withMessage('Invalid priority'),
     validate
   ],
   update: [
     body('type').optional().isIn(['Corrective', 'Preventive']).withMessage('Type must be Corrective or Preventive'),
     body('subject').optional().trim().notEmpty().withMessage('Subject cannot be empty'),
+    body('maintenance_team_id').optional().isInt({ min: 1 }).withMessage('Invalid maintenance team ID'),
+    body('assigned_technician_id').optional({ nullable: true }).custom((value) => {
+      if (value !== null && value !== undefined && (!Number.isInteger(value) || value < 1)) {
+        throw new Error('assigned_technician_id must be a positive integer or null');
+      }
+      return true;
+    }),
     body('scheduled_date').optional().isISO8601().withMessage('Invalid scheduled date'),
     body('duration_hours').optional().isFloat({ min: 0 }).withMessage('Duration must be positive'),
+    body('description').optional().trim(),
+    body('priority').optional().isIn(['low', 'medium', 'high', 'critical']).withMessage('Invalid priority'),
     validate
   ],
   updateStatus: [
@@ -93,12 +106,19 @@ const maintenanceRequestValidation = {
     validate
   ],
   assign: [
-    body('technician_id').isInt({ min: 1 }).withMessage('Valid technician ID is required'),
+    body('technician_id')
+      .optional({ nullable: true })
+      .custom((value) => {
+        if (value !== null && (!Number.isInteger(value) || value < 1)) {
+          throw new Error('technician_id must be a positive integer or null');
+        }
+        return true;
+      }),
     validate
   ],
   getByDate: [
-    query('start_date').isISO8601().withMessage('Valid start date is required'),
-    query('end_date').isISO8601().withMessage('Valid end date is required'),
+    query('start_date').optional().isISO8601().withMessage('Valid start date format required (ISO 8601)'),
+    query('end_date').optional().isISO8601().withMessage('Valid end date format required (ISO 8601)'),
     validate
   ]
 };

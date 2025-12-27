@@ -38,14 +38,37 @@ const createRequest = async (requestData) => {
     throw new BadRequestError('Cannot create request for scrapped equipment');
   }
 
-  requestData.maintenance_team_id = equipment.maintenance_team_id;
+  // Auto-assign maintenance team from equipment if not provided
+  if (!requestData.maintenance_team_id && equipment.maintenance_team_id) {
+    requestData.maintenance_team_id = equipment.maintenance_team_id;
+  }
+  
+  // Ensure status is always New for new requests
   requestData.status = 'New';
 
+  // Validate preventive maintenance requires scheduled date
   if (requestData.type === 'Preventive' && !requestData.scheduled_date) {
     throw new BadRequestError('Scheduled date is required for Preventive maintenance requests');
   }
 
-  return MaintenanceRequest.create(requestData);
+  // Validate assigned technician belongs to maintenance team if both are set
+  if (requestData.assigned_technician_id && requestData.maintenance_team_id) {
+    const isMember = await TeamMember.findOne({
+      where: {
+        user_id: requestData.assigned_technician_id,
+        team_id: requestData.maintenance_team_id
+      }
+    });
+    
+    if (!isMember) {
+      throw new BadRequestError('Assigned technician must be a member of the maintenance team');
+    }
+  }
+
+  const newRequest = await MaintenanceRequest.create(requestData);
+  
+  // Return full data with associations
+  return getRequestById(newRequest.id);
 };
 
 const updateRequest = async (id, requestData) => {
@@ -54,7 +77,13 @@ const updateRequest = async (id, requestData) => {
     throw new NotFoundError('Maintenance request not found');
   }
 
-  if (requestData.type === 'Preventive' && !requestData.scheduled_date && !request.scheduled_date) {
+  // Determine final type - either from update or existing
+  const finalType = requestData.type || request.type;
+  const finalScheduledDate = requestData.scheduled_date !== undefined 
+    ? requestData.scheduled_date 
+    : request.scheduled_date;
+
+  if (finalType === 'Preventive' && !finalScheduledDate) {
     throw new BadRequestError('Scheduled date is required for Preventive maintenance requests');
   }
 
@@ -89,13 +118,25 @@ const getRequestsByEquipment = async (equipmentId) => {
 };
 
 const getPreventiveByDateRange = async (startDate, endDate) => {
+  const whereClause = { type: 'Preventive' };
+  
+  // Add date range filter only if both dates are provided
+  if (startDate && endDate) {
+    whereClause.scheduled_date = {
+      [Op.between]: [startDate, endDate]
+    };
+  } else if (startDate) {
+    whereClause.scheduled_date = {
+      [Op.gte]: startDate
+    };
+  } else if (endDate) {
+    whereClause.scheduled_date = {
+      [Op.lte]: endDate
+    };
+  }
+
   return MaintenanceRequest.findAll({
-    where: {
-      type: 'Preventive',
-      scheduled_date: {
-        [Op.between]: [startDate, endDate]
-      }
-    },
+    where: whereClause,
     include: [
       { model: Equipment, as: 'equipment' },
       { model: MaintenanceTeam, as: 'maintenanceTeam' },
@@ -111,21 +152,28 @@ const updateStatus = async (id, status) => {
     throw new NotFoundError('Maintenance request not found');
   }
 
+  // Define valid status transitions
   const validTransitions = {
-    'New': ['In Progress'],
-    'In Progress': ['Repaired', 'Scrap'],
-    'Repaired': [],
+    'New': ['In Progress', 'Repaired', 'Scrap'],
+    'In Progress': ['Repaired', 'Scrap', 'New'],
+    'Repaired': ['In Progress'],
     'Scrap': []
   };
 
+  // Skip validation if status is the same
+  if (request.status === status) {
+    return getRequestById(id);
+  }
+
   if (!validTransitions[request.status].includes(status)) {
     throw new BadRequestError(
-      `Cannot transition from ${request.status} to ${status}. Valid transitions: ${validTransitions[request.status].join(', ') || 'none'}`
+      `Cannot transition from ${request.status} to ${status}. Valid transitions: ${validTransitions[request.status].join(', ') || 'none (terminal state)'}`
     );
   }
 
   await request.update({ status });
 
+  // Mark equipment as scrapped when request is moved to Scrap
   if (status === 'Scrap') {
     await equipmentService.markAsScrapped(request.equipment_id);
   }
@@ -137,6 +185,12 @@ const assignTechnician = async (requestId, technicianId) => {
   const request = await MaintenanceRequest.findByPk(requestId);
   if (!request) {
     throw new NotFoundError('Maintenance request not found');
+  }
+
+  // Allow unassigning technician by passing null
+  if (!technicianId) {
+    await request.update({ assigned_technician_id: null });
+    return getRequestById(requestId);
   }
 
   const technician = await User.findByPk(technicianId);

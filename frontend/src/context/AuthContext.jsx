@@ -1,35 +1,51 @@
 import { createContext, useContext, useState, useCallback } from 'react';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      localStorage.removeItem('user');
+      return null;
+    }
   });
   const [isLoading, setIsLoading] = useState(false);
 
   const login = useCallback(async (email, password) => {
     setIsLoading(true);
     try {
-      // Simulate API call - replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      // Mock user data
-      const userData = {
-        id: 1,
-        name: 'John Smith',
-        email: email,
-        role: 'admin',
-        avatar: null,
-      };
-      
+      const response = await authAPI.login({ email, password });
+      const { token, user: userData } = response.data?.data || response.data;
+
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('authToken', 'mock-jwt-token');
+      localStorage.setItem('authToken', token);
       return { success: true };
     } catch (error) {
-      return { success: false, error: error.message };
+      const message = error.response?.data?.message || error.message || 'Login failed';
+      return { success: false, error: message };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const register = useCallback(async (userData) => {
+    setIsLoading(true);
+    try {
+      const response = await authAPI.register(userData);
+      const { token, user: registeredUser } = response.data?.data || response.data;
+
+      setUser(registeredUser);
+      localStorage.setItem('user', JSON.stringify(registeredUser));
+      localStorage.setItem('authToken', token);
+      return { success: true };
+    } catch (error) {
+      const message = error.response?.data?.message || error.message || 'Registration failed';
+      return { success: false, error: message };
     } finally {
       setIsLoading(false);
     }
@@ -41,12 +57,20 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('authToken');
   }, []);
 
+  const updateUser = useCallback((updatedData) => {
+    const newUser = { ...user, ...updatedData };
+    setUser(newUser);
+    localStorage.setItem('user', JSON.stringify(newUser));
+  }, [user]);
+
   const value = {
     user,
     isAuthenticated: !!user,
     isLoading,
     login,
+    register,
     logout,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

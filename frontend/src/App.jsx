@@ -4,6 +4,7 @@ import { NotificationProvider } from './context/NotificationContext';
 import MainLayout from './layouts/MainLayout';
 import {
   Login,
+  Signup,
   Dashboard,
   Equipment,
   EquipmentDetail,
@@ -18,22 +19,22 @@ import {
 // Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return children;
 };
 
 // Public Route wrapper (redirect to dashboard if logged in)
 const PublicRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
-  
+
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }
-  
+
   return children;
 };
 
@@ -46,6 +47,14 @@ function AppRoutes() {
         element={
           <PublicRoute>
             <Login />
+          </PublicRoute>
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          <PublicRoute>
+            <Signup />
           </PublicRoute>
         }
       />

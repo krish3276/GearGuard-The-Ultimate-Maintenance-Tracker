@@ -50,7 +50,8 @@ const updateEquipment = async (id, equipmentData) => {
     }
   }
 
-  if (equipmentData.maintenance_team_id) {
+  // Validate maintenance team if provided (allow null to unassign)
+  if (equipmentData.maintenance_team_id !== undefined && equipmentData.maintenance_team_id !== null) {
     const team = await MaintenanceTeam.findByPk(equipmentData.maintenance_team_id);
     if (!team) {
       throw new NotFoundError('Maintenance team not found');
@@ -58,7 +59,9 @@ const updateEquipment = async (id, equipmentData) => {
   }
 
   await equipment.update(equipmentData);
-  return equipment;
+  
+  // Return updated equipment with associations
+  return getEquipmentById(id);
 };
 
 const deleteEquipment = async (id) => {

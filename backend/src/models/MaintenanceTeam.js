@@ -13,6 +13,15 @@ const MaintenanceTeam = sequelize.define('MaintenanceTeam', {
     validate: {
       notEmpty: { msg: 'Team name is required' }
     }
+  },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  color: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    defaultValue: '#3b82f6'
   }
 }, {
   tableName: 'maintenance_teams',

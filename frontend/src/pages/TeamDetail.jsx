@@ -1,30 +1,114 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Mail, Phone, Wrench, Trash2, Edit, User } from 'lucide-react';
+import { ArrowLeft, Plus, Mail, Trash2, User, Loader2, Wrench } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card, Button, Avatar, Badge, Modal, Input, EmptyState } from '../components/common';
-import { mockTeams } from '../data/mockData';
-import { cn } from '../utils/helpers';
+import { Card, Button, Avatar, Badge, Modal, EmptyState, Select } from '../components/common';
+import { teamsAPI, usersAPI } from '../services/api';
 
 const TeamDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [team, setTeam] = useState(null);
+  const [availableUsers, setAvailableUsers] = useState([]);
   const [showAddTechModal, setShowAddTechModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedTech, setSelectedTech] = useState(null);
-  const [techForm, setTechForm] = useState({
-    name: '',
-    email: '',
-    specialization: '',
-  });
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deletingTeam, setDeletingTeam] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const found = mockTeams.find((t) => t.id === parseInt(id));
-    setTeam(found);
+    fetchTeam();
   }, [id]);
 
-  if (!team) {
+  const fetchTeam = async () => {
+    try {
+      setLoading(true);
+      const res = await teamsAPI.getById(id);
+      const teamData = res.data?.data || res.data;
+      setTeam(teamData);
+
+      try {
+        const usersRes = await usersAPI.getTechnicians();
+        setAvailableUsers(usersRes.data?.data || usersRes.data || []);
+      } catch (err) {
+        console.error('Error fetching users:', err);
+      }
+
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching team:', err);
+      setError('Team not found');
+      setTeam(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddTechnician = async () => {
+    if (!selectedUserId) return;
+
+    try {
+      setSaving(true);
+      await teamsAPI.addMember(id, { user_id: parseInt(selectedUserId) });
+      await fetchTeam();
+      setShowAddTechModal(false);
+      setSelectedUserId('');
+    } catch (err) {
+      console.error('Error adding technician:', err);
+      const message = err.response?.data?.message || 'Failed to add technician';
+      alert(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoveTechnician = async () => {
+    if (!selectedTech) return;
+
+    try {
+      setSaving(true);
+      await teamsAPI.removeMember(id, selectedTech.id);
+      await fetchTeam();
+      setShowDeleteConfirm(false);
+      setSelectedTech(null);
+    } catch (err) {
+      console.error('Error removing technician:', err);
+      const message = err.response?.data?.message || 'Failed to remove technician';
+      alert(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteTeam = async () => {
+    if (!confirm(`Are you sure you want to delete "${team.name}"? This action cannot be undone.`)) return;
+    try {
+      setDeletingTeam(true);
+      await teamsAPI.delete(id);
+      navigate('/teams');
+    } catch (err) {
+      console.error('Error deleting team:', err);
+      alert(err.response?.data?.message || 'Failed to delete team');
+    } finally {
+      setDeletingTeam(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div>
+        <Header title="Loading..." />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !team) {
     return (
       <div>
         <Header title="Team Not Found" />
@@ -43,27 +127,7 @@ const TeamDetail = () => {
     );
   }
 
-  const handleAddTechnician = () => {
-    const newTech = {
-      id: Date.now(),
-      ...techForm,
-    };
-    setTeam((prev) => ({
-      ...prev,
-      technicians: [...prev.technicians, newTech],
-    }));
-    setShowAddTechModal(false);
-    setTechForm({ name: '', email: '', specialization: '' });
-  };
-
-  const handleRemoveTechnician = () => {
-    setTeam((prev) => ({
-      ...prev,
-      technicians: prev.technicians.filter((t) => t.id !== selectedTech.id),
-    }));
-    setShowDeleteConfirm(false);
-    setSelectedTech(null);
-  };
+  const technicians = team.members || [];
 
   return (
     <div>
@@ -74,7 +138,7 @@ const TeamDetail = () => {
         <div className="flex items-center justify-between mb-6">
           <Link
             to="/teams"
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Teams
@@ -93,18 +157,31 @@ const TeamDetail = () => {
             <Card>
               <div
                 className="w-16 h-16 rounded-xl flex items-center justify-center mb-4"
-                style={{ backgroundColor: team.color + '20' }}
+                style={{ backgroundColor: (team.color || '#3b82f6') + '30' }}
               >
-                <Wrench className="w-8 h-8" style={{ color: team.color }} />
+                <Wrench className="w-8 h-8" style={{ color: team.color || '#3b82f6' }} />
               </div>
-              <h2 className="text-xl font-semibold text-gray-900">{team.name}</h2>
-              <p className="text-gray-500 mt-2">{team.description}</p>
+              <h2 className="text-xl font-semibold text-white">{team.name}</h2>
+              <p className="text-gray-400 mt-2">{team.description}</p>
 
-              <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="mt-6 pt-6 border-t border-dark-700/50">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Team Members</span>
-                  <Badge variant="primary">{team.technicians.length}</Badge>
+                  <Badge variant="primary">{technicians.length}</Badge>
                 </div>
+              </div>
+
+              {/* Delete Team Button */}
+              <div className="mt-6 pt-6 border-t border-dark-700/50">
+                <Button
+                  variant="danger"
+                  className="w-full"
+                  onClick={handleDeleteTeam}
+                  disabled={deletingTeam}
+                  leftIcon={deletingTeam ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                >
+                  {deletingTeam ? 'Deleting...' : 'Delete Team'}
+                </Button>
               </div>
             </Card>
           </div>
@@ -112,28 +189,28 @@ const TeamDetail = () => {
           {/* Technicians List */}
           <div className="lg:col-span-2">
             <Card>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Technicians</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">Technicians</h3>
 
-              {team.technicians.length > 0 ? (
+              {technicians.length > 0 ? (
                 <div className="space-y-4">
-                  {team.technicians.map((tech) => (
+                  {technicians.map((tech) => (
                     <div
                       key={tech.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                      className="flex items-center justify-between p-4 bg-dark-900/50 rounded-xl border border-dark-700/50 hover:border-primary-500/30 transition-all duration-200"
                     >
                       <div className="flex items-center gap-4">
                         <Avatar name={tech.name} size="lg" />
                         <div>
-                          <p className="font-medium text-gray-900">{tech.name}</p>
+                          <p className="font-medium text-gray-200">{tech.name}</p>
                           <div className="flex items-center gap-4 mt-1">
                             <span className="text-sm text-gray-500 flex items-center gap-1">
                               <Mail className="w-3.5 h-3.5" />
                               {tech.email}
                             </span>
                           </div>
-                          {tech.specialization && (
+                          {(tech.specialization || tech.role) && (
                             <Badge variant="info" size="sm" className="mt-2">
-                              {tech.specialization}
+                              {tech.specialization || tech.role}
                             </Badge>
                           )}
                         </div>
@@ -144,7 +221,7 @@ const TeamDetail = () => {
                             setSelectedTech(tech);
                             setShowDeleteConfirm(true);
                           }}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                          className="p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all duration-200"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -177,35 +254,26 @@ const TeamDetail = () => {
         size="md"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowAddTechModal(false)}>
+            <Button variant="secondary" onClick={() => setShowAddTechModal(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={handleAddTechnician}>Add Technician</Button>
+            <Button onClick={handleAddTechnician} disabled={saving || !selectedUserId}>
+              {saving ? 'Adding...' : 'Add Technician'}
+            </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Input
-            label="Full Name"
-            value={techForm.name}
-            onChange={(v) => setTechForm({ ...techForm, name: v })}
-            placeholder="John Doe"
-            required
+          <Select
+            label="Select Technician"
+            value={selectedUserId}
+            onChange={setSelectedUserId}
+            placeholder="Choose a technician..."
+            options={availableUsers.map((u) => ({ value: u.id.toString(), label: `${u.name} (${u.email})` }))}
           />
-          <Input
-            label="Email"
-            type="email"
-            value={techForm.email}
-            onChange={(v) => setTechForm({ ...techForm, email: v })}
-            placeholder="john@company.com"
-            required
-          />
-          <Input
-            label="Specialization"
-            value={techForm.specialization}
-            onChange={(v) => setTechForm({ ...techForm, specialization: v })}
-            placeholder="e.g., Electrical Systems"
-          />
+          {availableUsers.length === 0 && (
+            <p className="text-sm text-gray-500">No available technicians found. Create users first.</p>
+          )}
         </div>
       </Modal>
 
@@ -217,17 +285,17 @@ const TeamDetail = () => {
         size="sm"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
+            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={handleRemoveTechnician}>
-              Remove
+            <Button variant="danger" onClick={handleRemoveTechnician} disabled={saving}>
+              {saving ? 'Removing...' : 'Remove'}
             </Button>
           </>
         }
       >
-        <p className="text-gray-600">
-          Are you sure you want to remove <strong>{selectedTech?.name}</strong> from this team?
+        <p className="text-gray-300">
+          Are you sure you want to remove <strong className="text-white">{selectedTech?.name}</strong> from this team?
         </p>
       </Modal>
     </div>

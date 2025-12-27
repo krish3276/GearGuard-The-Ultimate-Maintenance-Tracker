@@ -14,9 +14,9 @@ const Textarea = ({
   return (
     <div className={cn('w-full', className)}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-300 mb-2">
           {label}
-          {required && <span className="text-red-500 ml-1">*</span>}
+          {required && <span className="text-rose-400 ml-1">*</span>}
         </label>
       )}
       <textarea
@@ -26,14 +26,14 @@ const Textarea = ({
         disabled={disabled}
         rows={rows}
         className={cn(
-          'w-full px-3 py-2 border rounded-lg text-sm resize-none',
-          'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500',
-          'placeholder:text-gray-400',
-          'disabled:bg-gray-100 disabled:cursor-not-allowed',
-          error ? 'border-red-500' : 'border-gray-300'
+          'w-full px-4 py-3 bg-dark-800/50 border rounded-xl text-sm text-gray-100 resize-none',
+          'focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50',
+          'placeholder:text-gray-500 transition-all duration-300',
+          'disabled:bg-dark-900 disabled:text-gray-500 disabled:cursor-not-allowed',
+          error ? 'border-rose-500/50' : 'border-dark-600/50'
         )}
       />
-      {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
+      {error && <p className="mt-2 text-sm text-rose-400">{error}</p>}
     </div>
   );
 };
