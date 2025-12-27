@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import MainLayout from './layouts/MainLayout';
 import {
   Login,
@@ -10,6 +11,7 @@ import {
   TeamDetail,
   MaintenanceRequests,
   Calendar,
+  Profile,
 } from './pages';
 
 // Protected Route wrapper
@@ -63,6 +65,7 @@ function AppRoutes() {
         <Route path="teams/:id" element={<TeamDetail />} />
         <Route path="maintenance" element={<MaintenanceRequests />} />
         <Route path="calendar" element={<Calendar />} />
+        <Route path="profile" element={<Profile />} />
       </Route>
 
       {/* Catch all - redirect to dashboard */}
@@ -75,7 +78,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <NotificationProvider>
+          <AppRoutes />
+        </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   );

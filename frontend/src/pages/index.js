@@ -6,3 +6,4 @@ export { default as Teams } from './Teams';
 export { default as TeamDetail } from './TeamDetail';
 export { default as MaintenanceRequests } from './MaintenanceRequests';
 export { default as Calendar } from './Calendar';
+export { default as Profile } from './Profile';

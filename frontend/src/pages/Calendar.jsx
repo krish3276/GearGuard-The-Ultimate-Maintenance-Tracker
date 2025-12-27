@@ -31,18 +31,21 @@ const Calendar = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDayModal, setShowDayModal] = useState(false);
-  const [requests] = useState(
+  const [requests, setRequests] = useState(
     mockMaintenanceRequests.filter((r) => r.type === 'preventive' && r.scheduledDate)
   );
 
-  const [formData, setFormData] = useState({
+  const initialFormData = {
     subject: '',
     description: '',
     equipmentId: '',
     maintenanceTeamId: '',
     assignedTechnicianId: '',
     scheduledDate: '',
-  });
+    priority: 'medium',
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
 
   // Calendar grid calculations
   const monthStart = startOfMonth(currentMonth);
@@ -102,6 +105,44 @@ const Calendar = () => {
   const getTechniciansForTeam = (teamId) => {
     const team = mockTeams.find((t) => t.id === parseInt(teamId));
     return team?.technicians || [];
+  };
+
+  const handleCreateMaintenance = () => {
+    // Validate required fields
+    if (!formData.subject || !formData.equipmentId || !formData.scheduledDate) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    const equipment = mockEquipment.find((e) => e.id === parseInt(formData.equipmentId));
+    const team = mockTeams.find((t) => t.id === parseInt(formData.maintenanceTeamId));
+    const technician = getTechniciansForTeam(formData.maintenanceTeamId).find(
+      (t) => t.id === parseInt(formData.assignedTechnicianId)
+    );
+
+    const newRequest = {
+      id: Date.now(), // Generate unique ID
+      subject: formData.subject,
+      description: formData.description,
+      type: 'preventive',
+      status: 'new',
+      priority: formData.priority || 'medium',
+      equipmentId: parseInt(formData.equipmentId),
+      equipmentName: equipment?.name || '',
+      maintenanceTeamId: parseInt(formData.maintenanceTeamId) || null,
+      maintenanceTeam: team?.name || '',
+      assignedTechnicianId: parseInt(formData.assignedTechnicianId) || null,
+      assignedTechnician: technician?.name || 'Unassigned',
+      createdDate: format(new Date(), 'yyyy-MM-dd'),
+      scheduledDate: formData.scheduledDate,
+      completedDate: null,
+      duration: null,
+      isOverdue: false,
+    };
+
+    setRequests((prev) => [...prev, newRequest]);
+    setFormData(initialFormData);
+    setShowCreateModal(false);
   };
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -378,20 +419,21 @@ const Calendar = () => {
       {/* Create Maintenance Modal */}
       <Modal
         isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={() => {
+          setShowCreateModal(false);
+          setFormData(initialFormData);
+        }}
         title="Schedule Preventive Maintenance"
         size="lg"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
+            <Button variant="secondary" onClick={() => {
+              setShowCreateModal(false);
+              setFormData(initialFormData);
+            }}>
               Cancel
             </Button>
-            <Button
-              onClick={() => {
-                // Create logic here
-                setShowCreateModal(false);
-              }}
-            >
+            <Button onClick={handleCreateMaintenance}>
               Schedule
             </Button>
           </>
@@ -458,6 +500,19 @@ const Calendar = () => {
             value={formData.scheduledDate}
             onChange={(v) => setFormData({ ...formData, scheduledDate: v })}
             required
+          />
+
+          <Select
+            label="Priority"
+            value={formData.priority}
+            onChange={(v) => setFormData({ ...formData, priority: v })}
+            options={[
+              { value: 'low', label: 'Low' },
+              { value: 'medium', label: 'Medium' },
+              { value: 'high', label: 'High' },
+              { value: 'critical', label: 'Critical' },
+            ]}
+            placeholder="Select priority"
           />
         </div>
       </Modal>
