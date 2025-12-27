@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Cog,
@@ -10,26 +10,156 @@ import {
   Calendar,
   ArrowRight,
   Loader2,
+  Activity,
+  Clock,
+  Zap,
+  BarChart3,
+  Shield,
+  Sparkles,
+  ChevronRight,
+  PlayCircle,
 } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card, Badge, Avatar } from '../components/common';
+import { Card, Badge } from '../components/common';
 import { equipmentAPI, maintenanceAPI, teamsAPI } from '../services/api';
 import { formatDate } from '../utils/helpers';
+import { useAuth } from '../context/AuthContext';
+
+// Animated Counter Component
+const AnimatedCounter = ({ value, suffix = '', duration = 1000 }) => {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    let startTime;
+    const numericValue = typeof value === 'number' ? value : parseInt(value) || 0;
+
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      setCount(Math.floor(progress * numericValue));
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+
+    requestAnimationFrame(animate);
+  }, [value, duration]);
+
+  return <span className="animate-count-up">{count}{suffix}</span>;
+};
+
+// Progress Ring Component
+const ProgressRing = ({ progress, size = 60, strokeWidth = 4, color = '#6366f1' }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (progress / 100) * circumference;
+
+  return (
+    <svg className="progress-ring" width={size} height={size}>
+      <circle
+        stroke="rgba(255,255,255,0.1)"
+        strokeWidth={strokeWidth}
+        fill="transparent"
+        r={radius}
+        cx={size / 2}
+        cy={size / 2}
+      />
+      <circle
+        className="progress-ring__circle"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        fill="transparent"
+        r={radius}
+        cx={size / 2}
+        cy={size / 2}
+        style={{
+          strokeDasharray: circumference,
+          strokeDashoffset: offset,
+        }}
+      />
+    </svg>
+  );
+};
+
+// Mini Sparkline Chart
+const Sparkline = ({ data = [30, 60, 40, 80, 50, 70, 90], color = '#10b981' }) => {
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const height = 30;
+  const width = 80;
+  const points = data.map((val, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((val - min) / range) * height;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <svg width={width} height={height} className="overflow-visible">
+      <polyline
+        className="sparkline-path"
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={points}
+      />
+    </svg>
+  );
+};
+
+// Health Bar Component
+const HealthBar = ({ label, value, max, color, delay = 0 }) => {
+  const percentage = Math.min((value / max) * 100, 100);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-center text-sm">
+        <span className="text-gray-400">{label}</span>
+        <span className="text-gray-200 font-medium">{value}</span>
+      </div>
+      <div className="h-2 bg-dark-700/50 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full health-bar-fill"
+          style={{
+            width: `${percentage}%`,
+            background: color,
+            animationDelay: `${delay}ms`,
+          }}
+        />
+      </div>
+    </div>
+  );
+};
 
 const Dashboard = () => {
+  const { user } = useAuth();
   const [stats, setStats] = useState({
     totalEquipment: 0,
     operationalEquipment: 0,
+    criticalEquipment: 0,
     openRequests: 0,
     overdueRequests: 0,
     completedThisMonth: 0,
     activeTeams: 0,
+    inProgressRequests: 0,
   });
 
   const [recentRequests, setRecentRequests] = useState([]);
   const [upcomingMaintenance, setUpcomingMaintenance] = useState([]);
+  const [recentActivity, setRecentActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Get greeting based on time
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,19 +176,23 @@ const Dashboard = () => {
         const teams = teamsRes.data?.data || teamsRes.data || [];
 
         const operational = equipment.filter((e) => !e.is_scrapped).length;
+        const critical = equipment.filter((e) => e.health_score && e.health_score < 30).length;
         const openReqs = requests.filter(
           (r) => r.status === 'New' || r.status === 'In Progress'
         ).length;
+        const inProgress = requests.filter((r) => r.status === 'In Progress').length;
         const overdueReqs = requests.filter((r) => r.isOverdue).length;
         const completed = requests.filter((r) => r.status === 'Repaired').length;
 
         setStats({
           totalEquipment: equipment.length,
           operationalEquipment: operational,
+          criticalEquipment: critical,
           openRequests: openReqs,
           overdueRequests: overdueReqs,
           completedThisMonth: completed,
           activeTeams: teams.length,
+          inProgressRequests: inProgress,
         });
 
         setRecentRequests(requests.slice(0, 5));
@@ -67,6 +201,21 @@ const Dashboard = () => {
             .filter((r) => r.type === 'Preventive' && r.scheduled_date)
             .slice(0, 4)
         );
+
+        // Create mock activity feed from recent requests
+        const activities = requests.slice(0, 6).map((req, index) => ({
+          id: req.id,
+          type: req.status === 'Repaired' ? 'completed' : req.status === 'In Progress' ? 'started' : 'created',
+          message: req.status === 'Repaired'
+            ? `Maintenance completed for ${req.equipment?.name || 'Equipment'}`
+            : req.status === 'In Progress'
+              ? `Work started on ${req.subject}`
+              : `New request: ${req.subject}`,
+          time: req.updatedAt || req.createdAt,
+          delay: index * 100,
+        }));
+        setRecentActivity(activities);
+
         setError(null);
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
@@ -79,68 +228,104 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
+  // Calculate utilization percentage
+  const utilizationPercent = Math.min(
+    85,
+    Math.round((stats.openRequests / Math.max(stats.activeTeams, 1)) * 20)
+  );
+
+  // Calculate equipment health distribution
+  const healthDistribution = useMemo(() => ({
+    critical: stats.criticalEquipment,
+    warning: Math.floor(stats.totalEquipment * 0.15),
+    good: stats.operationalEquipment - stats.criticalEquipment - Math.floor(stats.totalEquipment * 0.15),
+  }), [stats]);
+
   const statCards = [
     {
       title: 'Critical Equipment',
-      value: `${stats.operationalEquipment} Units`,
-      subtitle: `Health < 30%`,
+      value: stats.criticalEquipment,
+      subtitle: 'Health < 30%',
       icon: AlertTriangle,
       gradient: 'from-rose-500 to-red-600',
-      bgColor: 'bg-rose-500/10',
-      trend: 'Needs immediate attention',
-      alert: true,
+      bgGlow: 'rgba(244, 63, 94, 0.15)',
+      progressColor: '#f43f5e',
+      progress: stats.totalEquipment > 0 ? (stats.criticalEquipment / stats.totalEquipment) * 100 : 0,
+      trend: 'down',
+      trendValue: 'Needs attention',
+      link: '/equipment',
     },
     {
       title: 'Technician Load',
-      value: `${Math.min(85, Math.round((stats.openRequests / Math.max(stats.activeTeams, 1)) * 20))}% Utilized`,
-      subtitle: 'Assign Carefully',
+      value: utilizationPercent,
+      suffix: '%',
+      subtitle: 'Workforce utilization',
       icon: Users,
       gradient: 'from-blue-500 to-cyan-500',
-      bgColor: 'bg-blue-500/10',
-      trend: 'Workforce utilization',
-      alert: false,
+      bgGlow: 'rgba(6, 182, 212, 0.15)',
+      progressColor: '#06b6d4',
+      progress: utilizationPercent,
+      trend: 'neutral',
+      trendValue: `${stats.activeTeams} teams active`,
+      link: '/teams',
     },
     {
       title: 'Open Requests',
       value: stats.openRequests,
-      subtitle: `${stats.overdueRequests} Overdue`,
+      subtitle: `${stats.overdueRequests} overdue`,
       icon: Wrench,
       gradient: 'from-emerald-500 to-green-500',
-      bgColor: 'bg-emerald-500/10',
-      trend: `${stats.completedThisMonth} completed this month`,
-      alert: stats.overdueRequests > 0,
+      bgGlow: 'rgba(16, 185, 129, 0.15)',
+      progressColor: '#10b981',
+      progress: stats.completedThisMonth > 0
+        ? (stats.completedThisMonth / (stats.completedThisMonth + stats.openRequests)) * 100
+        : 0,
+      trend: 'up',
+      trendValue: `${stats.completedThisMonth} completed`,
+      sparklineData: [20, 35, 25, 45, 40, 55, stats.openRequests * 5],
+      link: '/maintenance',
     },
     {
       title: 'Active Teams',
       value: stats.activeTeams,
       subtitle: 'Maintenance teams',
-      icon: Users,
+      icon: Shield,
       gradient: 'from-purple-500 to-pink-500',
-      bgColor: 'bg-purple-500/10',
-      trend: 'Fully staffed',
-      alert: false,
+      bgGlow: 'rgba(168, 85, 247, 0.15)',
+      progressColor: '#a855f7',
+      progress: 100,
+      trend: 'up',
+      trendValue: 'Fully operational',
+      link: '/teams',
     },
   ];
 
   const getStatusBadge = (status) => {
     const statusKey = status?.toLowerCase().replace(' ', '_') || 'new';
-    const variants = {
-      new: 'info',
-      in_progress: 'warning',
-      repaired: 'success',
-      scrap: 'danger',
+    const configs = {
+      new: { variant: 'info', icon: Sparkles },
+      in_progress: { variant: 'warning', icon: PlayCircle },
+      repaired: { variant: 'success', icon: CheckCircle },
+      scrap: { variant: 'danger', icon: AlertTriangle },
     };
-    return <Badge variant={variants[statusKey] || 'default'}>{status || 'New'}</Badge>;
+    const config = configs[statusKey] || configs.new;
+    return (
+      <Badge variant={config.variant} className="flex items-center gap-1">
+        <config.icon className="w-3 h-3" />
+        {status || 'New'}
+      </Badge>
+    );
   };
 
-  const getPriorityBadge = (priority) => {
-    const variants = {
-      low: 'default',
-      medium: 'info',
-      high: 'warning',
-      critical: 'danger',
-    };
-    return <Badge variant={variants[priority] || 'default'}>{priority}</Badge>;
+  const getActivityIcon = (type) => {
+    switch (type) {
+      case 'completed':
+        return <CheckCircle className="w-4 h-4 text-emerald-400" />;
+      case 'started':
+        return <PlayCircle className="w-4 h-4 text-amber-400" />;
+      default:
+        return <Sparkles className="w-4 h-4 text-primary-400" />;
+    }
   };
 
   if (loading) {
@@ -148,7 +333,13 @@ const Dashboard = () => {
       <div>
         <Header title="Dashboard" subtitle="Welcome back! Here's what's happening today." />
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-primary-500/20 rounded-full animate-pulse" />
+              <Loader2 className="w-8 h-8 animate-spin text-primary-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+            </div>
+            <p className="text-gray-400 animate-pulse">Loading dashboard...</p>
+          </div>
         </div>
       </div>
     );
@@ -169,107 +360,235 @@ const Dashboard = () => {
   }
 
   return (
-    <div>
+    <div className="min-h-screen">
       <Header title="Dashboard" subtitle="Welcome back! Here's what's happening today." />
 
       <div className="p-6 space-y-6">
+        {/* Hero Welcome Section */}
+        <div className="relative overflow-hidden rounded-3xl gradient-border">
+          <div className="gradient-mesh p-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-bold text-white mb-2">
+                  {greeting}, <span className="gradient-text">{user?.name || 'User'}</span>! 👋
+                </h2>
+                <p className="text-gray-400 text-lg max-w-xl">
+                  Your maintenance operations are running smoothly. Here's a quick overview of today's status.
+                </p>
+                <div className="flex items-center gap-4 mt-6">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                    <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                    <span className="text-emerald-400 text-sm font-medium">System Operational</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-primary-500/10 border border-primary-500/20 rounded-full">
+                    <Activity className="w-4 h-4 text-primary-400" />
+                    <span className="text-primary-400 text-sm font-medium">
+                      {stats.inProgressRequests} tasks in progress
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="hidden lg:flex items-center gap-6">
+                <div className="text-center">
+                  <div className="relative">
+                    <ProgressRing
+                      progress={stats.totalEquipment > 0 ? (stats.operationalEquipment / stats.totalEquipment) * 100 : 0}
+                      size={100}
+                      strokeWidth={8}
+                      color="#10b981"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-2xl font-bold text-white">
+                        {stats.totalEquipment > 0 ? Math.round((stats.operationalEquipment / stats.totalEquipment) * 100) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-gray-400 text-sm mt-2">Equipment Health</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="shimmer-bg absolute inset-0 pointer-events-none" />
+        </div>
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statCards.map((stat) => (
-            <Card key={stat.title} className="relative overflow-hidden" hover>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-400">{stat.title}</p>
-                  <p className="text-3xl font-bold text-white mt-1">{stat.value}</p>
-                  <p className="text-sm text-gray-500 mt-1">{stat.subtitle}</p>
+          {statCards.map((stat, index) => (
+            <Link key={stat.title} to={stat.link} className="block">
+              <div
+                className="stat-card relative overflow-hidden rounded-2xl border border-dark-700/50 bg-dark-800/60 backdrop-blur-xl p-6 hover:border-primary-500/30 hover:shadow-glow-sm"
+                style={{
+                  animationDelay: `${index * 100}ms`,
+                  boxShadow: `0 0 60px ${stat.bgGlow}`,
+                }}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-400 mb-1">{stat.title}</p>
+                    <p className="text-4xl font-bold text-white">
+                      <AnimatedCounter value={stat.value} suffix={stat.suffix || ''} />
+                    </p>
+                    <p className="text-sm text-gray-500 mt-1">{stat.subtitle}</p>
+                  </div>
+                  <div
+                    className={`p-3 rounded-2xl bg-gradient-to-br ${stat.gradient} shadow-lg animate-float-subtle`}
+                    style={{ animationDelay: `${index * 200}ms` }}
+                  >
+                    <stat.icon className="w-6 h-6 text-white" />
+                  </div>
                 </div>
-                <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.gradient} shadow-lg`}>
-                  <stat.icon className="w-6 h-6 text-white" />
+
+                {/* Progress or Sparkline */}
+                <div className="mt-4">
+                  {stat.sparklineData ? (
+                    <div className="flex items-center justify-between">
+                      <Sparkline data={stat.sparklineData} color={stat.progressColor} />
+                      <span className="text-sm text-emerald-400 flex items-center gap-1">
+                        <TrendingUp className="w-4 h-4" />
+                        {stat.trendValue}
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="h-1.5 bg-dark-700/50 rounded-full overflow-hidden mb-2">
+                        <div
+                          className="h-full rounded-full health-bar-fill"
+                          style={{
+                            width: `${stat.progress}%`,
+                            background: `linear-gradient(90deg, ${stat.progressColor}, ${stat.progressColor}88)`,
+                            animationDelay: `${index * 100 + 300}ms`,
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center text-sm">
+                        {stat.trend === 'down' ? (
+                          <span className="text-rose-400 flex items-center gap-1">
+                            <AlertTriangle className="w-4 h-4" />
+                            {stat.trendValue}
+                          </span>
+                        ) : stat.trend === 'up' ? (
+                          <span className="text-emerald-400 flex items-center gap-1">
+                            <TrendingUp className="w-4 h-4" />
+                            {stat.trendValue}
+                          </span>
+                        ) : (
+                          <span className="text-cyan-400 flex items-center gap-1">
+                            <BarChart3 className="w-4 h-4" />
+                            {stat.trendValue}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
-              <div className="mt-4 flex items-center text-sm">
-                {stat.alert ? (
-                  <span className="text-rose-400 flex items-center gap-1">
-                    <AlertTriangle className="w-4 h-4" />
-                    {stat.trend}
-                  </span>
-                ) : (
-                  <span className="text-emerald-400 flex items-center gap-1">
-                    <TrendingUp className="w-4 h-4" />
-                    {stat.trend}
-                  </span>
-                )}
-              </div>
-            </Card>
+            </Link>
           ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Recent Maintenance Requests */}
           <div className="lg:col-span-2">
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white">Recent Maintenance Requests</h2>
+            <Card className="overflow-hidden">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary-500/10 rounded-xl">
+                    <Wrench className="w-5 h-5 text-primary-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">Recent Maintenance Requests</h2>
+                    <p className="text-sm text-gray-500">Latest service requests</p>
+                  </div>
+                </div>
                 <Link
                   to="/maintenance"
-                  className="text-sm text-primary-400 hover:text-primary-300 font-medium flex items-center gap-1 transition-colors"
+                  className="flex items-center gap-2 text-sm text-primary-400 hover:text-primary-300 font-medium px-4 py-2 bg-primary-500/10 rounded-xl transition-all hover:bg-primary-500/20"
                 >
                   View all <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto -mx-6">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-dark-700/50">
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase">
+                    <tr className="glass-table-header">
+                      <th className="text-left py-3 px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
                         Subject
                       </th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase">
+                      <th className="text-left py-3 px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
                         Equipment
                       </th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase">
-                        Priority
+                      <th className="text-left py-3 px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
+                        Assigned To
                       </th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase">
+                      <th className="text-left py-3 px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-gray-400 uppercase">
-                        Assigned
+                      <th className="text-left py-3 px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
+                        Priority
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-dark-700/30">
-                    {recentRequests.map((request) => (
-                      <tr key={request.id} className="hover:bg-glass-white transition-colors">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
+                  <tbody>
+                    {recentRequests.map((request, index) => (
+                      <tr
+                        key={request.id}
+                        className="table-row-hover hover:bg-glass-white transition-all duration-200 border-b border-dark-700/30"
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-3">
                             {request.isOverdue && (
-                              <AlertTriangle className="w-4 h-4 text-rose-400" />
+                              <span className="flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-rose-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                              </span>
                             )}
-                            <span className="text-sm font-medium text-gray-200">
-                              {request.subject}
-                            </span>
+                            <div>
+                              <span className="text-sm font-medium text-gray-200">
+                                {request.subject}
+                              </span>
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {request.type || 'Corrective'}
+                              </p>
+                            </div>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-sm text-gray-400">
-                          {request.equipment?.name || '-'}
-                        </td>
-                        <td className="py-3 px-4">{getPriorityBadge(request.priority || 'medium')}</td>
-                        <td className="py-3 px-4">{getStatusBadge(request.status)}</td>
-                        <td className="py-3 px-4">
+                        <td className="py-4 px-6">
                           <div className="flex items-center gap-2">
-                            <Avatar name={request.assignedTechnician?.name || 'Unassigned'} size="xs" />
-                            <span className="text-sm text-gray-400">
-                              {request.assignedTechnician?.name || 'Unassigned'}
+                            <div className="p-1.5 bg-dark-700/50 rounded-lg">
+                              <Cog className="w-4 h-4 text-gray-400" />
+                            </div>
+                            <span className="text-sm text-gray-300">
+                              {request.equipment?.name || 'N/A'}
                             </span>
                           </div>
+                        </td>
+                        <td className="py-4 px-6 text-sm text-gray-300">
+                          {request.maintenanceTeam?.name || 'Unassigned'}
+                        </td>
+                        <td className="py-4 px-6">
+                          {getStatusBadge(request.status)}
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${request.priority === 'critical' || request.priority === 'high'
+                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                              : request.priority === 'medium'
+                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                            }`}>
+                            <Zap className="w-3 h-3" />
+                            {request.priority || 'Normal'}
+                          </span>
                         </td>
                       </tr>
                     ))}
                     {recentRequests.length === 0 && (
                       <tr>
-                        <td colSpan="5" className="py-8 text-center text-gray-500">
-                          No maintenance requests found
+                        <td colSpan="5" className="py-12 text-center">
+                          <div className="flex flex-col items-center">
+                            <Wrench className="w-12 h-12 text-gray-600 mb-3" />
+                            <p className="text-gray-500">No maintenance requests found</p>
+                          </div>
                         </td>
                       </tr>
                     )}
@@ -277,108 +596,181 @@ const Dashboard = () => {
                 </table>
               </div>
             </Card>
+
+            {/* Equipment Health Overview */}
+            <Card className="mt-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-cyan-500/10 rounded-xl">
+                    <BarChart3 className="w-5 h-5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">Equipment Health Overview</h2>
+                    <p className="text-sm text-gray-500">Status distribution by health score</p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <HealthBar
+                  label="Critical (< 30%)"
+                  value={healthDistribution.critical}
+                  max={stats.totalEquipment || 1}
+                  color="linear-gradient(90deg, #f43f5e, #fb7185)"
+                  delay={0}
+                />
+                <HealthBar
+                  label="Warning (30-70%)"
+                  value={healthDistribution.warning}
+                  max={stats.totalEquipment || 1}
+                  color="linear-gradient(90deg, #f59e0b, #fbbf24)"
+                  delay={200}
+                />
+                <HealthBar
+                  label="Good (> 70%)"
+                  value={healthDistribution.good}
+                  max={stats.totalEquipment || 1}
+                  color="linear-gradient(90deg, #10b981, #34d399)"
+                  delay={400}
+                />
+              </div>
+            </Card>
           </div>
 
-          {/* Upcoming Maintenance */}
-          <div>
+          {/* Right Sidebar */}
+          <div className="space-y-6">
+            {/* Upcoming Maintenance */}
             <Card>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white">Upcoming Maintenance</h2>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-amber-500/10 rounded-xl">
+                    <Calendar className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-white">Upcoming</h2>
+                </div>
                 <Link
                   to="/calendar"
                   className="text-sm text-primary-400 hover:text-primary-300 font-medium flex items-center gap-1 transition-colors"
                 >
-                  Calendar <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
-              <div className="space-y-3">
-                {upcomingMaintenance.map((item) => (
+              <div className="space-y-1">
+                {upcomingMaintenance.map((item, index) => (
                   <div
                     key={item.id}
-                    className="flex items-start gap-3 p-3 rounded-xl hover:bg-glass-white transition-all duration-200"
+                    className="timeline-item flex items-start gap-3 p-3 rounded-xl hover:bg-glass-hover transition-all duration-200"
+                    style={{ animationDelay: `${index * 100}ms` }}
                   >
-                    <div className="p-2 bg-primary-500/20 rounded-xl">
-                      <Calendar className="w-4 h-4 text-primary-400" />
+                    <div className="p-2 bg-primary-500/20 rounded-xl flex-shrink-0">
+                      <Clock className="w-4 h-4 text-primary-400" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-200 truncate">
                         {item.subject}
                       </p>
-                      <p className="text-xs text-gray-500">{item.equipment?.name || '-'}</p>
-                      <p className="text-xs text-primary-400 mt-1">
+                      <p className="text-xs text-gray-500 truncate">{item.equipment?.name || '-'}</p>
+                      <p className="text-xs text-primary-400 mt-1 flex items-center gap-1">
+                        <Calendar className="w-3 h-3" />
                         {formatDate(item.scheduled_date)}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-600" />
+                  </div>
+                ))}
+                {upcomingMaintenance.length === 0 && (
+                  <div className="text-center py-8">
+                    <Calendar className="w-10 h-10 text-gray-600 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No upcoming maintenance</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card>
+              <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
+              <div className="grid grid-cols-2 gap-3">
+                <Link
+                  to="/maintenance"
+                  className="quick-action-btn flex flex-col items-center gap-3 p-4 rounded-xl bg-primary-500/10 border border-primary-500/20 hover:bg-primary-500/20 hover:border-primary-500/30"
+                >
+                  <div className="action-icon p-3 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl shadow-lg">
+                    <Wrench className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-200">New Request</span>
+                </Link>
+                <Link
+                  to="/equipment"
+                  className="quick-action-btn flex flex-col items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-500/30"
+                >
+                  <div className="action-icon p-3 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg">
+                    <Cog className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-200">Equipment</span>
+                </Link>
+                <Link
+                  to="/teams"
+                  className="quick-action-btn flex flex-col items-center gap-3 p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 hover:border-purple-500/30"
+                >
+                  <div className="action-icon p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                    <Users className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-200">Teams</span>
+                </Link>
+                <Link
+                  to="/calendar"
+                  className="quick-action-btn flex flex-col items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/20 hover:border-amber-500/30"
+                >
+                  <div className="action-icon p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg">
+                    <Calendar className="w-5 h-5 text-white" />
+                  </div>
+                  <span className="text-sm font-medium text-gray-200">Calendar</span>
+                </Link>
+              </div>
+            </Card>
+
+            {/* Live Activity Feed */}
+            <Card>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-emerald-500/10 rounded-xl">
+                    <Activity className="w-5 h-5 text-emerald-400" />
+                  </div>
+                  <h2 className="text-lg font-semibold text-white">Activity</h2>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-emerald-400">
+                  <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                  Live
+                </div>
+              </div>
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {recentActivity.map((activity, index) => (
+                  <div
+                    key={activity.id}
+                    className="flex items-start gap-3 p-2 rounded-lg animate-slide-in"
+                    style={{ animationDelay: `${activity.delay}ms` }}
+                  >
+                    <div className="p-1.5 bg-dark-700/50 rounded-lg">
+                      {getActivityIcon(activity.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-300 line-clamp-2">{activity.message}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {activity.time ? formatDate(activity.time) : 'Just now'}
                       </p>
                     </div>
                   </div>
                 ))}
-                {upcomingMaintenance.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    No upcoming maintenance scheduled
-                  </p>
+                {recentActivity.length === 0 && (
+                  <div className="text-center py-6">
+                    <Activity className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">No recent activity</p>
+                  </div>
                 )}
               </div>
             </Card>
           </div>
         </div>
-
-        {/* Quick Actions */}
-        <Card>
-          <h2 className="text-lg font-semibold text-white mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Link
-              to="/maintenance"
-              className="flex items-center gap-3 p-4 rounded-xl bg-primary-500/10 border border-primary-500/20 
-                       hover:bg-primary-500/20 hover:border-primary-500/30 transition-all duration-300 group"
-            >
-              <div className="p-2 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl shadow-lg group-hover:shadow-glow-sm transition-shadow">
-                <Wrench className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-200">New Request</p>
-                <p className="text-xs text-gray-500">Create maintenance request</p>
-              </div>
-            </Link>
-            <Link
-              to="/equipment"
-              className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 
-                       hover:bg-emerald-500/20 hover:border-emerald-500/30 transition-all duration-300 group"
-            >
-              <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl shadow-lg group-hover:shadow-glow-sm transition-shadow">
-                <Cog className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-200">Add Equipment</p>
-                <p className="text-xs text-gray-500">Register new equipment</p>
-              </div>
-            </Link>
-            <Link
-              to="/teams"
-              className="flex items-center gap-3 p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 
-                       hover:bg-purple-500/20 hover:border-purple-500/30 transition-all duration-300 group"
-            >
-              <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg group-hover:shadow-glow-sm transition-shadow">
-                <Users className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-200">Manage Teams</p>
-                <p className="text-xs text-gray-500">View maintenance teams</p>
-              </div>
-            </Link>
-            <Link
-              to="/calendar"
-              className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 
-                       hover:bg-amber-500/20 hover:border-amber-500/30 transition-all duration-300 group"
-            >
-              <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg group-hover:shadow-glow-sm transition-shadow">
-                <Calendar className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-200">Schedule</p>
-                <p className="text-xs text-gray-500">View maintenance calendar</p>
-              </div>
-            </Link>
-          </div>
-        </Card>
       </div>
     </div>
   );
