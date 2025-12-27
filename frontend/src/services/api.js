@@ -9,7 +9,6 @@ const api = axios.create({
   },
 });
 
-// Request interceptor for auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
@@ -21,7 +20,6 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -33,49 +31,50 @@ api.interceptors.response.use(
   }
 );
 
-// Auth API
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
-  logout: () => api.post('/auth/logout'),
+  register: (data) => api.post('/auth/register', data),
   getCurrentUser: () => api.get('/auth/me'),
 };
 
-// Equipment API
 export const equipmentAPI = {
   getAll: (params) => api.get('/equipment', { params }),
   getById: (id) => api.get(`/equipment/${id}`),
   create: (data) => api.post('/equipment', data),
   update: (id, data) => api.put(`/equipment/${id}`, data),
   delete: (id) => api.delete(`/equipment/${id}`),
-  getMaintenanceRequests: (id) => api.get(`/equipment/${id}/maintenance-requests`),
 };
 
-// Teams API
 export const teamsAPI = {
   getAll: () => api.get('/teams'),
   getById: (id) => api.get(`/teams/${id}`),
   create: (data) => api.post('/teams', data),
   update: (id, data) => api.put(`/teams/${id}`, data),
   delete: (id) => api.delete(`/teams/${id}`),
-  getTechnicians: (id) => api.get(`/teams/${id}/technicians`),
+  getMembers: (id) => api.get(`/teams/${id}/members`),
+  addMember: (id, data) => api.post(`/teams/${id}/members`, data),
+  removeMember: (teamId, userId) => api.delete(`/teams/${teamId}/members/${userId}`),
 };
 
-// Maintenance Requests API
 export const maintenanceAPI = {
-  getAll: (params) => api.get('/maintenance-requests', { params }),
-  getById: (id) => api.get(`/maintenance-requests/${id}`),
-  create: (data) => api.post('/maintenance-requests', data),
-  update: (id, data) => api.put(`/maintenance-requests/${id}`, data),
-  updateStatus: (id, status) => api.patch(`/maintenance-requests/${id}/status`, { status }),
-  delete: (id) => api.delete(`/maintenance-requests/${id}`),
-  getByEquipment: (equipmentId) => api.get(`/maintenance-requests/equipment/${equipmentId}`),
-  getCalendarEvents: (params) => api.get('/maintenance-requests/calendar', { params }),
+  getAll: (params) => api.get('/requests', { params }),
+  getById: (id) => api.get(`/requests/${id}`),
+  create: (data) => api.post('/requests', data),
+  update: (id, data) => api.put(`/requests/${id}`, data),
+  updateStatus: (id, status) => api.patch(`/requests/${id}/status`, { status }),
+  assignTechnician: (id, data) => api.patch(`/requests/${id}/assign`, data),
+  delete: (id) => api.delete(`/requests/${id}`),
+  getByEquipment: (equipmentId) => api.get(`/requests/equipment/${equipmentId}`),
+  getCalendarEvents: (params) => api.get('/requests/preventive/calendar', { params }),
 };
 
-// Technicians API
-export const techniciansAPI = {
-  getAll: () => api.get('/technicians'),
-  getById: (id) => api.get(`/technicians/${id}`),
+export const usersAPI = {
+  getAll: () => api.get('/users'),
+  getById: (id) => api.get(`/users/${id}`),
+  getTechnicians: () => api.get('/users/technicians'),
+  create: (data) => api.post('/users', data),
+  update: (id, data) => api.put(`/users/${id}`, data),
+  delete: (id) => api.delete(`/users/${id}`),
 };
 
 export default api;

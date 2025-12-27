@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Plus,
@@ -10,14 +10,18 @@ import {
   Trash2,
   Wrench,
   ChevronDown,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import { Header } from '../components/layout';
 import { Card, Button, Badge, SearchInput, Modal, Input, Select, Textarea } from '../components/common';
-import { mockEquipment, mockTeams, departments, locations, equipmentStatusColors } from '../data/mockData';
+import { equipmentAPI, teamsAPI } from '../services/api';
+import { departments, locations, equipmentStatusColors } from '../data/constants';
 import { formatDate, formatStatus, cn } from '../utils/helpers';
 
 const Equipment = () => {
-  const [equipment, setEquipment] = useState(mockEquipment);
+  const [equipment, setEquipment] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDepartment, setFilterDepartment] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -25,8 +29,10 @@ const Equipment = () => {
   const [showModal, setShowModal] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Form state
   const [formData, setFormData] = useState({
     name: '',
     serialNumber: '',
@@ -41,16 +47,38 @@ const Equipment = () => {
     notes: '',
   });
 
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [equipmentRes, teamsRes] = await Promise.all([
+        equipmentAPI.getAll(),
+        teamsAPI.getAll(),
+      ]);
+      setEquipment(equipmentRes.data?.data || equipmentRes.data || []);
+      setTeams(teamsRes.data?.data || teamsRes.data || []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load equipment data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredEquipment = useMemo(() => {
     return equipment.filter((item) => {
       const matchesSearch =
         !searchTerm ||
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        item.owner.toLowerCase().includes(searchTerm.toLowerCase());
+        item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.serial_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        item.department_or_owner?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesDepartment = !filterDepartment || item.department === filterDepartment;
-      const matchesStatus = !filterStatus || item.status === filterStatus;
+      const matchesDepartment = !filterDepartment || item.department_or_owner === filterDepartment;
+      const matchesStatus = !filterStatus || (item.is_scrapped ? 'offline' : 'operational') === filterStatus;
 
       return matchesSearch && matchesDepartment && matchesStatus;
     });
@@ -77,16 +105,16 @@ const Equipment = () => {
     if (item) {
       setSelectedEquipment(item);
       setFormData({
-        name: item.name,
-        serialNumber: item.serialNumber,
-        model: item.model,
-        manufacturer: item.manufacturer,
-        purchaseDate: item.purchaseDate,
-        warrantyExpiry: item.warrantyExpiry,
-        location: item.location,
-        department: item.department,
-        maintenanceTeamId: item.maintenanceTeamId?.toString() || '',
-        owner: item.owner,
+        name: item.name || '',
+        serialNumber: item.serial_number || '',
+        model: item.model || '',
+        manufacturer: item.manufacturer || '',
+        purchaseDate: item.purchase_date || '',
+        warrantyExpiry: item.warranty_end || '',
+        location: item.location || '',
+        department: item.department_or_owner || '',
+        maintenanceTeamId: item.maintenance_team_id?.toString() || '',
+        owner: item.department_or_owner || '',
         notes: item.notes || '',
       });
     } else {
@@ -95,53 +123,96 @@ const Equipment = () => {
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    const team = mockTeams.find((t) => t.id === parseInt(formData.maintenanceTeamId));
-    
-    if (selectedEquipment) {
-      // Update existing
-      setEquipment((prev) =>
-        prev.map((item) =>
-          item.id === selectedEquipment.id
-            ? {
-                ...item,
-                ...formData,
-                maintenanceTeamId: parseInt(formData.maintenanceTeamId),
-                maintenanceTeam: team?.name || '',
-              }
-            : item
-        )
-      );
-    } else {
-      // Create new
-      const newEquipment = {
-        id: Date.now(),
-        ...formData,
-        maintenanceTeamId: parseInt(formData.maintenanceTeamId),
-        maintenanceTeam: team?.name || '',
-        status: 'operational',
-        openMaintenanceCount: 0,
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const payload = {
+        name: formData.name,
+        serial_number: formData.serialNumber,
+        location: formData.location || undefined,
+        department_or_owner: formData.department || formData.owner || undefined,
       };
-      setEquipment((prev) => [...prev, newEquipment]);
+
+      // Only include optional fields if they have values
+      if (formData.purchaseDate) payload.purchase_date = formData.purchaseDate;
+      if (formData.warrantyExpiry) payload.warranty_end = formData.warrantyExpiry;
+      if (formData.maintenanceTeamId) payload.maintenance_team_id = parseInt(formData.maintenanceTeamId);
+
+      if (selectedEquipment) {
+        await equipmentAPI.update(selectedEquipment.id, payload);
+      } else {
+        await equipmentAPI.create(payload);
+      }
+
+      await fetchData();
+      setShowModal(false);
+      resetForm();
+    } catch (err) {
+      console.error('Error saving equipment:', err);
+      const message = err.response?.data?.message || err.message || 'Failed to save equipment';
+      alert(message);
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
-    resetForm();
   };
 
-  const handleDelete = () => {
-    setEquipment((prev) => prev.filter((item) => item.id !== selectedEquipment.id));
-    setShowDeleteConfirm(false);
-    setSelectedEquipment(null);
+  const handleDelete = async () => {
+    try {
+      setSaving(true);
+      await equipmentAPI.delete(selectedEquipment.id);
+      await fetchData();
+      setShowDeleteConfirm(false);
+      setSelectedEquipment(null);
+    } catch (err) {
+      console.error('Error deleting equipment:', err);
+      const message = err.response?.data?.message || err.message || 'Failed to delete equipment';
+      if (err.response?.status === 403) {
+        alert('Permission denied. Only administrators can delete equipment.');
+      } else if (err.response?.status === 401) {
+        alert('Please log in again to perform this action.');
+      } else {
+        alert(message);
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (item) => {
+    const status = item.is_scrapped ? 'offline' : 'operational';
     const colors = equipmentStatusColors[status] || equipmentStatusColors.operational;
     return (
       <Badge className={cn(colors.bg, colors.text)}>
-        {formatStatus(status)}
+        {item.is_scrapped ? 'Scrapped' : 'Operational'}
       </Badge>
     );
   };
+
+  if (loading) {
+    return (
+      <div>
+        <Header title="Equipment" subtitle="Manage and monitor all your equipment" />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <Header title="Equipment" subtitle="Manage and monitor all your equipment" />
+        <div className="p-6">
+          <Card className="text-center py-12">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={fetchData}>Retry</Button>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -236,21 +307,21 @@ const Equipment = () => {
                         <p className="text-xs text-gray-500">{item.manufacturer} {item.model}</p>
                       </div>
                     </td>
-                    <td className="table-cell font-mono text-sm">{item.serialNumber}</td>
-                    <td className="table-cell text-gray-600">{item.location}</td>
-                    <td className="table-cell text-gray-600">{item.department}</td>
-                    <td className="table-cell">{getStatusBadge(item.status)}</td>
-                    <td className="table-cell text-gray-600">{item.maintenanceTeam}</td>
+                    <td className="table-cell font-mono text-sm">{item.serial_number || '-'}</td>
+                    <td className="table-cell text-gray-600">{item.location || '-'}</td>
+                    <td className="table-cell text-gray-600">{item.department_or_owner || '-'}</td>
+                    <td className="table-cell">{getStatusBadge(item)}</td>
+                    <td className="table-cell text-gray-600">{item.maintenanceTeam?.name || '-'}</td>
                     <td className="table-cell">
                       <span
                         className={cn(
                           'text-sm',
-                          new Date(item.warrantyExpiry) < new Date()
+                          item.warranty_end && new Date(item.warranty_end) < new Date()
                             ? 'text-red-600'
                             : 'text-gray-600'
                         )}
                       >
-                        {formatDate(item.warrantyExpiry)}
+                        {item.warranty_end ? formatDate(item.warranty_end) : '-'}
                       </span>
                     </td>
                     <td className="table-cell text-center">
@@ -258,13 +329,13 @@ const Equipment = () => {
                         to={`/equipment/${item.id}`}
                         className={cn(
                           'inline-flex items-center gap-1 px-2 py-1 rounded-lg text-sm font-medium',
-                          item.openMaintenanceCount > 0
+                          (item.openMaintenanceCount || 0) > 0
                             ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         )}
                       >
                         <Wrench className="w-3.5 h-3.5" />
-                        {item.openMaintenanceCount}
+                        {item.openMaintenanceCount || 0}
                       </Link>
                     </td>
                     <td className="table-cell">
@@ -317,11 +388,11 @@ const Equipment = () => {
         size="lg"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>
+            <Button variant="secondary" onClick={() => setShowModal(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
-              {selectedEquipment ? 'Save Changes' : 'Add Equipment'}
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : selectedEquipment ? 'Save Changes' : 'Add Equipment'}
             </Button>
           </>
         }
@@ -383,7 +454,7 @@ const Equipment = () => {
             label="Maintenance Team"
             value={formData.maintenanceTeamId}
             onChange={(v) => setFormData({ ...formData, maintenanceTeamId: v })}
-            options={mockTeams.map((t) => ({ value: t.id.toString(), label: t.name }))}
+            options={teams.map((t) => ({ value: t.id.toString(), label: t.name }))}
             placeholder="Assign team"
           />
           <Input
@@ -412,11 +483,11 @@ const Equipment = () => {
         size="sm"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
+            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={handleDelete}>
-              Delete
+            <Button variant="danger" onClick={handleDelete} disabled={saving}>
+              {saving ? 'Deleting...' : 'Delete'}
             </Button>
           </>
         }

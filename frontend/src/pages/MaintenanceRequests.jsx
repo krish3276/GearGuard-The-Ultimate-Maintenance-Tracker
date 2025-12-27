@@ -10,26 +10,28 @@ import {
   Calendar,
   X,
   GripVertical,
+  Loader2,
 } from 'lucide-react';
 import { Header } from '../components/layout';
 import { Card, Button, Badge, Avatar, Modal, Input, Select, Textarea, SearchInput } from '../components/common';
-import {
-  mockMaintenanceRequests,
-  mockEquipment,
-  mockTeams,
-  statusColors,
-  priorityColors,
-} from '../data/mockData';
+import { maintenanceAPI, equipmentAPI, teamsAPI, usersAPI } from '../services/api';
+import { statusColors, priorityColors } from '../data/constants';
 import { formatDate, formatStatus, cn } from '../utils/helpers';
 
 const MaintenanceRequests = () => {
-  const [requests, setRequests] = useState(mockMaintenanceRequests);
+  const [requests, setRequests] = useState([]);
+  const [equipment, setEquipment] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
   const [viewMode, setViewMode] = useState('kanban');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [draggedCard, setDraggedCard] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   const [formData, setFormData] = useState({
     subject: '',
@@ -43,19 +45,46 @@ const MaintenanceRequests = () => {
   });
 
   const columns = [
-    { id: 'new', title: 'New', color: 'bg-indigo-500' },
-    { id: 'in_progress', title: 'In Progress', color: 'bg-amber-500' },
-    { id: 'repaired', title: 'Repaired', color: 'bg-green-500' },
-    { id: 'scrap', title: 'Scrap', color: 'bg-red-500' },
+    { id: 'New', title: 'New', color: 'bg-indigo-500' },
+    { id: 'In Progress', title: 'In Progress', color: 'bg-amber-500' },
+    { id: 'Repaired', title: 'Repaired', color: 'bg-green-500' },
+    { id: 'Scrap', title: 'Scrap', color: 'bg-red-500' },
   ];
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [requestsRes, equipmentRes, teamsRes, techniciansRes] = await Promise.all([
+        maintenanceAPI.getAll(),
+        equipmentAPI.getAll(),
+        teamsAPI.getAll(),
+        usersAPI.getTechnicians().catch(() => ({ data: [] })),
+      ]);
+
+      setRequests(requestsRes.data?.data || requestsRes.data || []);
+      setEquipment(equipmentRes.data?.data || equipmentRes.data || []);
+      setTeams(teamsRes.data?.data || teamsRes.data || []);
+      setTechnicians(techniciansRes.data?.data || techniciansRes.data || []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getColumnRequests = (status) => {
     return requests.filter((r) => {
       const matchesStatus = r.status === status;
       const matchesSearch =
         !searchTerm ||
-        r.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.equipmentName.toLowerCase().includes(searchTerm.toLowerCase());
+        r.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (r.equipmentName || r.Equipment?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
       return matchesStatus && matchesSearch;
     });
   };
@@ -76,24 +105,29 @@ const MaintenanceRequests = () => {
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = (e, newStatus) => {
+  const handleDrop = async (e, newStatus) => {
     e.preventDefault();
     if (draggedCard && draggedCard.status !== newStatus) {
-      setRequests((prev) =>
-        prev.map((r) =>
-          r.id === draggedCard.id ? { ...r, status: newStatus } : r
-        )
-      );
+      try {
+        await maintenanceAPI.updateStatus(draggedCard.id, newStatus);
+        setRequests((prev) =>
+          prev.map((r) =>
+            r.id === draggedCard.id ? { ...r, status: newStatus } : r
+          )
+        );
+      } catch (err) {
+        console.error('Error updating status:', err);
+      }
     }
   };
 
   const handleEquipmentChange = (equipmentId) => {
-    const equipment = mockEquipment.find((e) => e.id === parseInt(equipmentId));
-    if (equipment) {
+    const equip = equipment.find((e) => e.id === parseInt(equipmentId));
+    if (equip) {
       setFormData({
         ...formData,
         equipmentId,
-        maintenanceTeamId: equipment.maintenanceTeamId?.toString() || '',
+        maintenanceTeamId: equip.maintenance_team_id?.toString() || '',
       });
     } else {
       setFormData({ ...formData, equipmentId, maintenanceTeamId: '' });
@@ -101,36 +135,37 @@ const MaintenanceRequests = () => {
   };
 
   const getTechniciansForTeam = (teamId) => {
-    const team = mockTeams.find((t) => t.id === parseInt(teamId));
-    return team?.technicians || [];
+    const team = teams.find((t) => t.id === parseInt(teamId));
+    return team?.members || team?.Users || technicians.filter(t => t.team_id === parseInt(teamId)) || [];
   };
 
-  const handleCreateRequest = () => {
-    const equipment = mockEquipment.find((e) => e.id === parseInt(formData.equipmentId));
-    const team = mockTeams.find((t) => t.id === parseInt(formData.maintenanceTeamId));
-    const technician = getTechniciansForTeam(formData.maintenanceTeamId).find(
-      (t) => t.id === parseInt(formData.assignedTechnicianId)
-    );
+  const handleCreateRequest = async () => {
+    try {
+      setSaving(true);
+      const payload = {
+        subject: formData.subject,
+        type: formData.type === 'corrective' ? 'Corrective' : 'Preventive',
+        equipment_id: parseInt(formData.equipmentId),
+      };
 
-    const newRequest = {
-      id: Date.now(),
-      ...formData,
-      equipmentId: parseInt(formData.equipmentId),
-      equipmentName: equipment?.name || '',
-      maintenanceTeamId: parseInt(formData.maintenanceTeamId),
-      maintenanceTeam: team?.name || '',
-      assignedTechnicianId: parseInt(formData.assignedTechnicianId),
-      assignedTechnician: technician?.name || '',
-      status: 'new',
-      createdDate: new Date().toISOString().split('T')[0],
-      completedDate: null,
-      duration: null,
-      isOverdue: false,
-    };
+      // Only include optional fields if they have values
+      if (formData.description) payload.description = formData.description;
+      if (formData.priority) payload.priority = formData.priority;
+      if (formData.maintenanceTeamId) payload.maintenance_team_id = parseInt(formData.maintenanceTeamId);
+      if (formData.assignedTechnicianId) payload.assigned_technician_id = parseInt(formData.assignedTechnicianId);
+      if (formData.scheduledDate) payload.scheduled_date = formData.scheduledDate;
 
-    setRequests((prev) => [newRequest, ...prev]);
-    setShowCreateModal(false);
-    resetForm();
+      await maintenanceAPI.create(payload);
+      await fetchData();
+      setShowCreateModal(false);
+      resetForm();
+    } catch (err) {
+      console.error('Error creating request:', err);
+      const message = err.response?.data?.message || 'Failed to create request';
+      alert(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const resetForm = () => {
@@ -151,21 +186,28 @@ const MaintenanceRequests = () => {
     setShowDetailModal(true);
   };
 
-  const handleUpdateStatus = (requestId, newStatus) => {
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id === requestId
-          ? {
+  const handleUpdateStatus = async (requestId, newStatus) => {
+    try {
+      await maintenanceAPI.updateStatus(requestId, newStatus);
+      setRequests((prev) =>
+        prev.map((r) =>
+          r.id === requestId
+            ? {
               ...r,
               status: newStatus,
               completedDate:
                 newStatus === 'repaired' ? new Date().toISOString().split('T')[0] : r.completedDate,
             }
-          : r
-      )
-    );
-    if (selectedRequest?.id === requestId) {
-      setSelectedRequest((prev) => ({ ...prev, status: newStatus }));
+            : r
+        )
+      );
+      if (selectedRequest?.id === requestId) {
+        setSelectedRequest((prev) => ({ ...prev, status: newStatus }));
+      }
+    } catch (err) {
+      console.error('Error updating status:', err);
+      const message = err.response?.data?.message || 'Failed to update status';
+      alert(message);
     }
   };
 
@@ -179,13 +221,40 @@ const MaintenanceRequests = () => {
   };
 
   const getStatusBadge = (status) => {
-    const colors = statusColors[status] || statusColors.new;
+    const statusKey = status?.toLowerCase().replace(' ', '_') || 'new';
+    const colors = statusColors[statusKey] || statusColors.new;
     return (
       <Badge className={cn(colors.bg, colors.text)}>
-        {formatStatus(status)}
+        {status || 'New'}
       </Badge>
     );
   };
+
+  if (loading) {
+    return (
+      <div>
+        <Header title="Maintenance Requests" subtitle="Track and manage all maintenance work orders" />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <Header title="Maintenance Requests" subtitle="Track and manage all maintenance work orders" />
+        <div className="p-6">
+          <Card className="text-center py-12">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={fetchData}>Retry</Button>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -281,7 +350,7 @@ const MaintenanceRequests = () => {
                       </div>
 
                       {/* Equipment */}
-                      <p className="text-xs text-gray-500 mb-3">{request.equipmentName}</p>
+                      <p className="text-xs text-gray-500 mb-3">{request.equipment?.name || '-'}</p>
 
                       {/* Meta */}
                       <div className="flex items-center justify-between">
@@ -294,14 +363,14 @@ const MaintenanceRequests = () => {
                           </Badge>
                           {getPriorityBadge(request.priority)}
                         </div>
-                        <Avatar name={request.assignedTechnician} size="xs" />
+                        <Avatar name={request.assignedTechnician?.name || request.maintenanceTeam?.name || 'Unassigned'} size="xs" />
                       </div>
 
                       {/* Scheduled Date */}
                       {request.scheduledDate && (
                         <div className="flex items-center gap-1 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
                           <Calendar className="w-3 h-3" />
-                          {formatDate(request.scheduledDate)}
+                          {formatDate(request.scheduled_date)}
                         </div>
                       )}
                     </div>
@@ -339,8 +408,8 @@ const MaintenanceRequests = () => {
                     .filter(
                       (r) =>
                         !searchTerm ||
-                        r.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        r.equipmentName.toLowerCase().includes(searchTerm.toLowerCase())
+                        r.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (r.equipment?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
                     )
                     .map((request) => (
                       <tr
@@ -356,30 +425,35 @@ const MaintenanceRequests = () => {
                             <span className="font-medium">{request.subject}</span>
                           </div>
                         </td>
-                        <td className="table-cell text-gray-600">{request.equipmentName}</td>
+                        <td className="table-cell text-gray-600">{request.equipment?.name || '-'}</td>
                         <td className="table-cell">
                           <Badge
-                            variant={request.type === 'preventive' ? 'info' : 'warning'}
+                            variant={request.type === 'Preventive' ? 'info' : 'warning'}
                             size="sm"
                           >
                             {request.type}
                           </Badge>
                         </td>
-                        <td className="table-cell">{getPriorityBadge(request.priority)}</td>
+                        <td className="table-cell">{getPriorityBadge(request.priority || 'medium')}</td>
                         <td className="table-cell">{getStatusBadge(request.status)}</td>
                         <td className="table-cell">
                           <div className="flex items-center gap-2">
-                            <Avatar name={request.assignedTechnician} size="xs" />
-                            <span className="text-sm">{request.assignedTechnician}</span>
+                            <Avatar name={request.assignedTechnician?.name || 'Unassigned'} size="xs" />
+                            <span className="text-sm">{request.assignedTechnician?.name || 'Unassigned'}</span>
                           </div>
                         </td>
                         <td className="table-cell text-gray-600">
-                          {request.scheduledDate ? formatDate(request.scheduledDate) : '-'}
+                          {request.scheduled_date ? formatDate(request.scheduled_date) : '-'}
                         </td>
                       </tr>
                     ))}
                 </tbody>
               </table>
+              {requests.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  No maintenance requests found
+                </div>
+              )}
             </div>
           </Card>
         )}
@@ -396,10 +470,12 @@ const MaintenanceRequests = () => {
         size="lg"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
+            <Button variant="secondary" onClick={() => setShowCreateModal(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={handleCreateRequest}>Create Request</Button>
+            <Button onClick={handleCreateRequest} disabled={saving}>
+              {saving ? 'Creating...' : 'Create Request'}
+            </Button>
           </>
         }
       >
@@ -449,9 +525,9 @@ const MaintenanceRequests = () => {
             label="Equipment"
             value={formData.equipmentId}
             onChange={handleEquipmentChange}
-            options={mockEquipment.map((e) => ({
+            options={equipment.map((e) => ({
               value: e.id.toString(),
-              label: `${e.name} (${e.serialNumber})`,
+              label: `${e.name} (${e.serial_number || 'No S/N'})`,
             }))}
             placeholder="Select equipment"
             required
@@ -464,7 +540,7 @@ const MaintenanceRequests = () => {
               onChange={(v) =>
                 setFormData({ ...formData, maintenanceTeamId: v, assignedTechnicianId: '' })
               }
-              options={mockTeams.map((t) => ({
+              options={teams.map((t) => ({
                 value: t.id.toString(),
                 label: t.name,
               }))}
@@ -510,7 +586,7 @@ const MaintenanceRequests = () => {
                   {selectedRequest.subject}
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  {selectedRequest.equipmentName}
+                  {selectedRequest.equipment?.name || '-'}
                 </p>
               </div>
               {getStatusBadge(selectedRequest.status)}
@@ -521,39 +597,39 @@ const MaintenanceRequests = () => {
               <div className="p-4 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">Type</p>
                 <Badge
-                  variant={selectedRequest.type === 'preventive' ? 'info' : 'warning'}
+                  variant={selectedRequest.type === 'Preventive' ? 'info' : 'warning'}
                 >
                   {selectedRequest.type}
                 </Badge>
               </div>
               <div className="p-4 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">Priority</p>
-                {getPriorityBadge(selectedRequest.priority)}
+                {getPriorityBadge(selectedRequest.priority || 'medium')}
               </div>
               <div className="p-4 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">Assigned Team</p>
-                <p className="text-sm font-medium">{selectedRequest.maintenanceTeam}</p>
+                <p className="text-sm font-medium">{selectedRequest.maintenanceTeam?.name || '-'}</p>
               </div>
               <div className="p-4 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">Assigned Technician</p>
                 <div className="flex items-center gap-2">
-                  <Avatar name={selectedRequest.assignedTechnician} size="xs" />
+                  <Avatar name={selectedRequest.assignedTechnician?.name || 'Unassigned'} size="xs" />
                   <span className="text-sm font-medium">
-                    {selectedRequest.assignedTechnician}
+                    {selectedRequest.assignedTechnician?.name || 'Unassigned'}
                   </span>
                 </div>
               </div>
               <div className="p-4 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">Created Date</p>
                 <p className="text-sm font-medium">
-                  {formatDate(selectedRequest.createdDate)}
+                  {formatDate(selectedRequest.created_at)}
                 </p>
               </div>
               <div className="p-4 bg-gray-50 rounded-lg">
                 <p className="text-xs text-gray-500 mb-1">Scheduled Date</p>
                 <p className="text-sm font-medium">
-                  {selectedRequest.scheduledDate
-                    ? formatDate(selectedRequest.scheduledDate)
+                  {selectedRequest.scheduled_date
+                    ? formatDate(selectedRequest.scheduled_date)
                     : '-'}
                 </p>
               </div>
@@ -596,7 +672,7 @@ const MaintenanceRequests = () => {
                   type="number"
                   placeholder="Hours spent"
                   value={selectedRequest.duration || ''}
-                  onChange={() => {}}
+                  onChange={() => { }}
                   className="w-32"
                 />
               </div>

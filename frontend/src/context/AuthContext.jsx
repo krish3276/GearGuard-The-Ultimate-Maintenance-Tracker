@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useCallback } from 'react';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -12,24 +13,16 @@ export const AuthProvider = ({ children }) => {
   const login = useCallback(async (email, password) => {
     setIsLoading(true);
     try {
-      // Simulate API call - replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      // Mock user data
-      const userData = {
-        id: 1,
-        name: 'John Smith',
-        email: email,
-        role: 'admin',
-        avatar: null,
-      };
-      
+      const response = await authAPI.login({ email, password });
+      const { token, user: userData } = response.data?.data || response.data;
+
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
-      localStorage.setItem('authToken', 'mock-jwt-token');
+      localStorage.setItem('authToken', token);
       return { success: true };
     } catch (error) {
-      return { success: false, error: error.message };
+      const message = error.response?.data?.message || error.message || 'Login failed';
+      return { success: false, error: message };
     } finally {
       setIsLoading(false);
     }

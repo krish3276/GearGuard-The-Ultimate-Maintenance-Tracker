@@ -1,10 +1,9 @@
 import { createContext, useContext, useState, useCallback } from 'react';
-import { mockNotifications } from '../data/mockData';
 
 const NotificationContext = createContext(null);
 
 export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState([]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

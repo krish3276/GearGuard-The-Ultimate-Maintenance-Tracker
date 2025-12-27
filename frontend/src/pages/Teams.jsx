@@ -1,15 +1,18 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Users, Mail, Wrench, ChevronRight } from 'lucide-react';
+import { Plus, Users, Mail, Wrench, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
 import { Header } from '../components/layout';
 import { Card, Button, Avatar, Badge, Modal, Input, Textarea } from '../components/common';
-import { mockTeams } from '../data/mockData';
+import { teamsAPI } from '../services/api';
 import { cn } from '../utils/helpers';
 
 const Teams = () => {
-  const [teams, setTeams] = useState(mockTeams);
+  const [teams, setTeams] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -17,23 +20,41 @@ const Teams = () => {
   });
 
   const colors = [
-    '#3b82f6', // blue
-    '#22c55e', // green
-    '#f59e0b', // amber
-    '#ef4444', // red
-    '#8b5cf6', // purple
-    '#ec4899', // pink
-    '#06b6d4', // cyan
-    '#f97316', // orange
+    '#3b82f6',
+    '#22c55e',
+    '#f59e0b',
+    '#ef4444',
+    '#8b5cf6',
+    '#ec4899',
+    '#06b6d4',
+    '#f97316',
   ];
+
+  useEffect(() => {
+    fetchTeams();
+  }, []);
+
+  const fetchTeams = async () => {
+    try {
+      setLoading(true);
+      const res = await teamsAPI.getAll();
+      setTeams(res.data?.data || res.data || []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching teams:', err);
+      setError('Failed to load teams');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleOpenModal = (team = null) => {
     if (team) {
       setSelectedTeam(team);
       setFormData({
-        name: team.name,
-        description: team.description,
-        color: team.color,
+        name: team.name || '',
+        description: team.description || '',
+        color: team.color || '#3b82f6',
       });
     } else {
       setSelectedTeam(null);
@@ -42,23 +63,50 @@ const Teams = () => {
     setShowModal(true);
   };
 
-  const handleSave = () => {
-    if (selectedTeam) {
-      setTeams((prev) =>
-        prev.map((t) =>
-          t.id === selectedTeam.id ? { ...t, ...formData } : t
-        )
-      );
-    } else {
-      const newTeam = {
-        id: Date.now(),
-        ...formData,
-        technicians: [],
-      };
-      setTeams((prev) => [...prev, newTeam]);
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      if (selectedTeam) {
+        await teamsAPI.update(selectedTeam.id, formData);
+      } else {
+        await teamsAPI.create(formData);
+      }
+      await fetchTeams();
+      setShowModal(false);
+    } catch (err) {
+      console.error('Error saving team:', err);
+      const message = err.response?.data?.message || 'Failed to save team';
+      alert(message);
+    } finally {
+      setSaving(false);
     }
-    setShowModal(false);
   };
+
+  if (loading) {
+    return (
+      <div>
+        <Header title="Maintenance Teams" subtitle="Manage your maintenance teams and technicians" />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <Header title="Maintenance Teams" subtitle="Manage your maintenance teams and technicians" />
+        <div className="p-6">
+          <Card className="text-center py-12">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={fetchTeams}>Retry</Button>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -80,9 +128,9 @@ const Teams = () => {
                 <div className="flex items-start justify-between mb-4">
                   <div
                     className="w-12 h-12 rounded-xl flex items-center justify-center"
-                    style={{ backgroundColor: team.color + '20' }}
+                    style={{ backgroundColor: (team.color || '#3b82f6') + '20' }}
                   >
-                    <Users className="w-6 h-6" style={{ color: team.color }} />
+                    <Users className="w-6 h-6" style={{ color: team.color || '#3b82f6' }} />
                   </div>
                   <ChevronRight className="w-5 h-5 text-gray-400" />
                 </div>
@@ -93,7 +141,7 @@ const Teams = () => {
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                   <div className="flex items-center gap-2">
                     <div className="flex -space-x-2">
-                      {team.technicians.slice(0, 3).map((tech) => (
+                      {(team.technicians || team.Users || []).slice(0, 3).map((tech) => (
                         <Avatar
                           key={tech.id}
                           name={tech.name}
@@ -102,14 +150,14 @@ const Teams = () => {
                         />
                       ))}
                     </div>
-                    {team.technicians.length > 3 && (
+                    {(team.technicians || team.Users || []).length > 3 && (
                       <span className="text-xs text-gray-500">
-                        +{team.technicians.length - 3}
+                        +{(team.technicians || team.Users || []).length - 3}
                       </span>
                     )}
                   </div>
                   <Badge variant="default">
-                    {team.technicians.length} Technician{team.technicians.length !== 1 ? 's' : ''}
+                    {(team.technicians || team.Users || []).length} Technician{(team.technicians || team.Users || []).length !== 1 ? 's' : ''}
                   </Badge>
                 </div>
               </Card>
@@ -135,11 +183,11 @@ const Teams = () => {
         size="md"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowModal(false)}>
+            <Button variant="secondary" onClick={() => setShowModal(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={handleSave}>
-              {selectedTeam ? 'Save Changes' : 'Create Team'}
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : selectedTeam ? 'Save Changes' : 'Create Team'}
             </Button>
           </>
         }

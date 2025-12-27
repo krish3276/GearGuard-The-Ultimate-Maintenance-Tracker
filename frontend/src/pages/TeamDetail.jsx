@@ -1,30 +1,100 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Mail, Phone, Wrench, Trash2, Edit, User } from 'lucide-react';
+import { ArrowLeft, Plus, Mail, Phone, Wrench, Trash2, Edit, User, Loader2, AlertTriangle } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card, Button, Avatar, Badge, Modal, Input, EmptyState } from '../components/common';
-import { mockTeams } from '../data/mockData';
+import { Card, Button, Avatar, Badge, Modal, Input, EmptyState, Select } from '../components/common';
+import { teamsAPI, usersAPI } from '../services/api';
 import { cn } from '../utils/helpers';
 
 const TeamDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [team, setTeam] = useState(null);
+  const [availableUsers, setAvailableUsers] = useState([]);
   const [showAddTechModal, setShowAddTechModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedTech, setSelectedTech] = useState(null);
-  const [techForm, setTechForm] = useState({
-    name: '',
-    email: '',
-    specialization: '',
-  });
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const found = mockTeams.find((t) => t.id === parseInt(id));
-    setTeam(found);
+    fetchTeam();
   }, [id]);
 
-  if (!team) {
+  const fetchTeam = async () => {
+    try {
+      setLoading(true);
+      const res = await teamsAPI.getById(id);
+      const teamData = res.data?.data || res.data;
+      setTeam(teamData);
+
+      try {
+        const usersRes = await usersAPI.getTechnicians();
+        setAvailableUsers(usersRes.data?.data || usersRes.data || []);
+      } catch (err) {
+        console.error('Error fetching users:', err);
+      }
+
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching team:', err);
+      setError('Team not found');
+      setTeam(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddTechnician = async () => {
+    if (!selectedUserId) return;
+
+    try {
+      setSaving(true);
+      await teamsAPI.addMember(id, { user_id: parseInt(selectedUserId) });
+      await fetchTeam();
+      setShowAddTechModal(false);
+      setSelectedUserId('');
+    } catch (err) {
+      console.error('Error adding technician:', err);
+      const message = err.response?.data?.message || 'Failed to add technician';
+      alert(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoveTechnician = async () => {
+    if (!selectedTech) return;
+
+    try {
+      setSaving(true);
+      await teamsAPI.removeMember(id, selectedTech.id);
+      await fetchTeam();
+      setShowDeleteConfirm(false);
+      setSelectedTech(null);
+    } catch (err) {
+      console.error('Error removing technician:', err);
+      const message = err.response?.data?.message || 'Failed to remove technician';
+      alert(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div>
+        <Header title="Loading..." />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !team) {
     return (
       <div>
         <Header title="Team Not Found" />
@@ -43,27 +113,7 @@ const TeamDetail = () => {
     );
   }
 
-  const handleAddTechnician = () => {
-    const newTech = {
-      id: Date.now(),
-      ...techForm,
-    };
-    setTeam((prev) => ({
-      ...prev,
-      technicians: [...prev.technicians, newTech],
-    }));
-    setShowAddTechModal(false);
-    setTechForm({ name: '', email: '', specialization: '' });
-  };
-
-  const handleRemoveTechnician = () => {
-    setTeam((prev) => ({
-      ...prev,
-      technicians: prev.technicians.filter((t) => t.id !== selectedTech.id),
-    }));
-    setShowDeleteConfirm(false);
-    setSelectedTech(null);
-  };
+  const technicians = team.technicians || team.Users || [];
 
   return (
     <div>
@@ -93,9 +143,9 @@ const TeamDetail = () => {
             <Card>
               <div
                 className="w-16 h-16 rounded-xl flex items-center justify-center mb-4"
-                style={{ backgroundColor: team.color + '20' }}
+                style={{ backgroundColor: (team.color || '#3b82f6') + '20' }}
               >
-                <Wrench className="w-8 h-8" style={{ color: team.color }} />
+                <Wrench className="w-8 h-8" style={{ color: team.color || '#3b82f6' }} />
               </div>
               <h2 className="text-xl font-semibold text-gray-900">{team.name}</h2>
               <p className="text-gray-500 mt-2">{team.description}</p>
@@ -103,7 +153,7 @@ const TeamDetail = () => {
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Team Members</span>
-                  <Badge variant="primary">{team.technicians.length}</Badge>
+                  <Badge variant="primary">{technicians.length}</Badge>
                 </div>
               </div>
             </Card>
@@ -114,9 +164,9 @@ const TeamDetail = () => {
             <Card>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Technicians</h3>
 
-              {team.technicians.length > 0 ? (
+              {technicians.length > 0 ? (
                 <div className="space-y-4">
-                  {team.technicians.map((tech) => (
+                  {technicians.map((tech) => (
                     <div
                       key={tech.id}
                       className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
@@ -131,9 +181,9 @@ const TeamDetail = () => {
                               {tech.email}
                             </span>
                           </div>
-                          {tech.specialization && (
+                          {(tech.specialization || tech.role) && (
                             <Badge variant="info" size="sm" className="mt-2">
-                              {tech.specialization}
+                              {tech.specialization || tech.role}
                             </Badge>
                           )}
                         </div>
@@ -177,35 +227,26 @@ const TeamDetail = () => {
         size="md"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowAddTechModal(false)}>
+            <Button variant="secondary" onClick={() => setShowAddTechModal(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={handleAddTechnician}>Add Technician</Button>
+            <Button onClick={handleAddTechnician} disabled={saving || !selectedUserId}>
+              {saving ? 'Adding...' : 'Add Technician'}
+            </Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Input
-            label="Full Name"
-            value={techForm.name}
-            onChange={(v) => setTechForm({ ...techForm, name: v })}
-            placeholder="John Doe"
-            required
+          <Select
+            label="Select Technician"
+            value={selectedUserId}
+            onChange={setSelectedUserId}
+            placeholder="Choose a technician..."
+            options={availableUsers.map((u) => ({ value: u.id.toString(), label: `${u.name} (${u.email})` }))}
           />
-          <Input
-            label="Email"
-            type="email"
-            value={techForm.email}
-            onChange={(v) => setTechForm({ ...techForm, email: v })}
-            placeholder="john@company.com"
-            required
-          />
-          <Input
-            label="Specialization"
-            value={techForm.specialization}
-            onChange={(v) => setTechForm({ ...techForm, specialization: v })}
-            placeholder="e.g., Electrical Systems"
-          />
+          {availableUsers.length === 0 && (
+            <p className="text-sm text-gray-500">No available technicians found. Create users first.</p>
+          )}
         </div>
       </Modal>
 
@@ -217,11 +258,11 @@ const TeamDetail = () => {
         size="sm"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
+            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)} disabled={saving}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={handleRemoveTechnician}>
-              Remove
+            <Button variant="danger" onClick={handleRemoveTechnician} disabled={saving}>
+              {saving ? 'Removing...' : 'Remove'}
             </Button>
           </>
         }

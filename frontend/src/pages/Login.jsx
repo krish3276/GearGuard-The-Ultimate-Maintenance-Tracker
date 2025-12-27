@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Cog, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -15,7 +15,7 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     if (!email || !password) {
       setError('Please enter both email and password');
       return;
@@ -133,7 +133,10 @@ const Login = () => {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-500">
-              Demo credentials: any email / any password
+              Don't have an account?{' '}
+              <Link to="/signup" className="text-primary-600 hover:text-primary-700 font-medium">
+                Sign up
+              </Link>
             </p>
           </div>
         </div>

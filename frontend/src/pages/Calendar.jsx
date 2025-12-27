@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -6,6 +6,8 @@ import {
   Calendar as CalendarIcon,
   Clock,
   Wrench,
+  Loader2,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   format,
@@ -23,7 +25,7 @@ import {
 } from 'date-fns';
 import { Header } from '../components/layout';
 import { Card, Button, Badge, Avatar, Modal, Input, Select, Textarea } from '../components/common';
-import { mockMaintenanceRequests, mockEquipment, mockTeams } from '../data/mockData';
+import { maintenanceAPI, equipmentAPI, teamsAPI } from '../services/api';
 import { cn, formatDate } from '../utils/helpers';
 
 const Calendar = () => {
@@ -31,9 +33,12 @@ const Calendar = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDayModal, setShowDayModal] = useState(false);
-  const [requests, setRequests] = useState(
-    mockMaintenanceRequests.filter((r) => r.type === 'preventive' && r.scheduledDate)
-  );
+  const [requests, setRequests] = useState([]);
+  const [equipment, setEquipment] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
   const initialFormData = {
     subject: '',
@@ -47,7 +52,32 @@ const Calendar = () => {
 
   const [formData, setFormData] = useState(initialFormData);
 
-  // Calendar grid calculations
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [requestsRes, equipmentRes, teamsRes] = await Promise.all([
+        maintenanceAPI.getAll(),
+        equipmentAPI.getAll(),
+        teamsAPI.getAll(),
+      ]);
+
+      const allRequests = requestsRes.data?.data || requestsRes.data || [];
+      setRequests(allRequests.filter((r) => r.type === 'preventive' && r.scheduledDate));
+      setEquipment(equipmentRes.data?.data || equipmentRes.data || []);
+      setTeams(teamsRes.data?.data || teamsRes.data || []);
+      setError(null);
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError('Failed to load calendar data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const monthStart = startOfMonth(currentMonth);
   const monthEnd = endOfMonth(monthStart);
   const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
@@ -65,8 +95,12 @@ const Calendar = () => {
 
   const getEventsForDay = (date) => {
     return requests.filter((r) => {
-      const eventDate = parseISO(r.scheduledDate);
-      return isSameDay(eventDate, date);
+      try {
+        const eventDate = parseISO(r.scheduledDate);
+        return isSameDay(eventDate, date);
+      } catch {
+        return false;
+      }
     });
   };
 
@@ -80,7 +114,6 @@ const Calendar = () => {
     if (events.length > 0) {
       setShowDayModal(true);
     } else {
-      // Open create modal with date pre-filled
       setFormData({
         ...formData,
         scheduledDate: format(date, 'yyyy-MM-dd'),
@@ -90,12 +123,12 @@ const Calendar = () => {
   };
 
   const handleEquipmentChange = (equipmentId) => {
-    const equipment = mockEquipment.find((e) => e.id === parseInt(equipmentId));
-    if (equipment) {
+    const equip = equipment.find((e) => e.id === parseInt(equipmentId));
+    if (equip) {
       setFormData({
         ...formData,
         equipmentId,
-        maintenanceTeamId: equipment.maintenanceTeamId?.toString() || '',
+        maintenanceTeamId: (equip.maintenanceTeamId || equip.TeamId)?.toString() || '',
       });
     } else {
       setFormData({ ...formData, equipmentId, maintenanceTeamId: '' });
@@ -103,51 +136,46 @@ const Calendar = () => {
   };
 
   const getTechniciansForTeam = (teamId) => {
-    const team = mockTeams.find((t) => t.id === parseInt(teamId));
-    return team?.technicians || [];
+    const team = teams.find((t) => t.id === parseInt(teamId));
+    return team?.technicians || team?.Users || [];
   };
 
-  const handleCreateMaintenance = () => {
-    // Validate required fields
+  const handleCreateMaintenance = async () => {
     if (!formData.subject || !formData.equipmentId || !formData.scheduledDate) {
       alert('Please fill in all required fields');
       return;
     }
 
-    const equipment = mockEquipment.find((e) => e.id === parseInt(formData.equipmentId));
-    const team = mockTeams.find((t) => t.id === parseInt(formData.maintenanceTeamId));
-    const technician = getTechniciansForTeam(formData.maintenanceTeamId).find(
-      (t) => t.id === parseInt(formData.assignedTechnicianId)
-    );
+    try {
+      setSaving(true);
+      const payload = {
+        subject: formData.subject,
+        type: 'Preventive',
+        equipment_id: parseInt(formData.equipmentId),
+        scheduled_date: formData.scheduledDate,
+      };
 
-    const newRequest = {
-      id: Date.now(), // Generate unique ID
-      subject: formData.subject,
-      description: formData.description,
-      type: 'preventive',
-      status: 'new',
-      priority: formData.priority || 'medium',
-      equipmentId: parseInt(formData.equipmentId),
-      equipmentName: equipment?.name || '',
-      maintenanceTeamId: parseInt(formData.maintenanceTeamId) || null,
-      maintenanceTeam: team?.name || '',
-      assignedTechnicianId: parseInt(formData.assignedTechnicianId) || null,
-      assignedTechnician: technician?.name || 'Unassigned',
-      createdDate: format(new Date(), 'yyyy-MM-dd'),
-      scheduledDate: formData.scheduledDate,
-      completedDate: null,
-      duration: null,
-      isOverdue: false,
-    };
+      // Only include optional fields if they have values
+      if (formData.description) payload.description = formData.description;
+      if (formData.priority) payload.priority = formData.priority;
+      if (formData.maintenanceTeamId) payload.maintenance_team_id = parseInt(formData.maintenanceTeamId);
+      if (formData.assignedTechnicianId) payload.assigned_technician_id = parseInt(formData.assignedTechnicianId);
 
-    setRequests((prev) => [...prev, newRequest]);
-    setFormData(initialFormData);
-    setShowCreateModal(false);
+      await maintenanceAPI.create(payload);
+      await fetchData();
+      setFormData(initialFormData);
+      setShowCreateModal(false);
+    } catch (err) {
+      console.error('Error creating maintenance:', err);
+      const message = err.response?.data?.message || 'Failed to schedule maintenance';
+      alert(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-  // Group events by priority for coloring
   const getPriorityColor = (priority) => {
     const colors = {
       low: 'bg-gray-200 text-gray-700',
@@ -157,6 +185,32 @@ const Calendar = () => {
     };
     return colors[priority] || colors.medium;
   };
+
+  if (loading) {
+    return (
+      <div>
+        <Header title="Maintenance Calendar" subtitle="Schedule and view preventive maintenance" />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <Header title="Maintenance Calendar" subtitle="Schedule and view preventive maintenance" />
+        <div className="p-6">
+          <Card className="text-center py-12">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={fetchData}>Retry</Button>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -241,8 +295,8 @@ const Calendar = () => {
                       today
                         ? 'bg-primary-600 text-white'
                         : isCurrentMonth
-                        ? 'text-gray-900'
-                        : 'text-gray-400'
+                          ? 'text-gray-900'
+                          : 'text-gray-400'
                     )}
                   >
                     {format(day, 'd')}
@@ -318,16 +372,16 @@ const Calendar = () => {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-gray-900">{event.subject}</p>
-                      <p className="text-sm text-gray-500">{event.equipmentName}</p>
+                      <p className="text-sm text-gray-500">{event.equipmentName || event.Equipment?.name || 'N/A'}</p>
                       <div className="flex items-center gap-4 mt-2">
                         <span className="text-xs text-primary-600 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {formatDate(event.scheduledDate)}
                         </span>
                         <div className="flex items-center gap-1">
-                          <Avatar name={event.assignedTechnician} size="xs" />
+                          <Avatar name={event.assignedTechnician || event.AssignedTechnician?.name || 'Unassigned'} size="xs" />
                           <span className="text-xs text-gray-500">
-                            {event.assignedTechnician}
+                            {event.assignedTechnician || event.AssignedTechnician?.name || 'Unassigned'}
                           </span>
                         </div>
                       </div>
@@ -337,8 +391,8 @@ const Calendar = () => {
                         event.priority === 'critical'
                           ? 'danger'
                           : event.priority === 'high'
-                          ? 'warning'
-                          : 'default'
+                            ? 'warning'
+                            : 'default'
                       }
                       size="sm"
                     >
@@ -348,10 +402,10 @@ const Calendar = () => {
                 ))}
               {requests.filter((r) => new Date(r.scheduledDate) >= new Date()).length ===
                 0 && (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  No upcoming maintenance scheduled
-                </p>
-              )}
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    No upcoming maintenance scheduled
+                  </p>
+                )}
             </div>
           </Card>
         </div>
@@ -374,15 +428,15 @@ const Calendar = () => {
                 <div className="flex items-start justify-between">
                   <div>
                     <h4 className="font-medium text-gray-900">{event.subject}</h4>
-                    <p className="text-sm text-gray-500">{event.equipmentName}</p>
+                    <p className="text-sm text-gray-500">{event.equipmentName || event.Equipment?.name || 'N/A'}</p>
                   </div>
                   <Badge
                     variant={
                       event.priority === 'critical'
                         ? 'danger'
                         : event.priority === 'high'
-                        ? 'warning'
-                        : 'info'
+                          ? 'warning'
+                          : 'info'
                     }
                   >
                     {event.priority}
@@ -390,10 +444,10 @@ const Calendar = () => {
                 </div>
                 <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
                   <div className="flex items-center gap-2">
-                    <Avatar name={event.assignedTechnician} size="xs" />
-                    <span className="text-sm text-gray-600">{event.assignedTechnician}</span>
+                    <Avatar name={event.assignedTechnician || event.AssignedTechnician?.name || 'Unassigned'} size="xs" />
+                    <span className="text-sm text-gray-600">{event.assignedTechnician || event.AssignedTechnician?.name || 'Unassigned'}</span>
                   </div>
-                  <span className="text-sm text-gray-500">{event.maintenanceTeam}</span>
+                  <span className="text-sm text-gray-500">{event.maintenanceTeam?.name || event.Team?.name || 'N/A'}</span>
                 </div>
               </div>
             ))}
@@ -430,11 +484,11 @@ const Calendar = () => {
             <Button variant="secondary" onClick={() => {
               setShowCreateModal(false);
               setFormData(initialFormData);
-            }}>
+            }} disabled={saving}>
               Cancel
             </Button>
-            <Button onClick={handleCreateMaintenance}>
-              Schedule
+            <Button onClick={handleCreateMaintenance} disabled={saving}>
+              {saving ? 'Scheduling...' : 'Schedule'}
             </Button>
           </>
         }
@@ -460,9 +514,9 @@ const Calendar = () => {
             label="Equipment"
             value={formData.equipmentId}
             onChange={handleEquipmentChange}
-            options={mockEquipment.map((e) => ({
+            options={equipment.map((e) => ({
               value: e.id.toString(),
-              label: `${e.name} (${e.serialNumber})`,
+              label: `${e.name} (${e.serialNumber || 'No S/N'})`,
             }))}
             placeholder="Select equipment"
             required
@@ -475,7 +529,7 @@ const Calendar = () => {
               onChange={(v) =>
                 setFormData({ ...formData, maintenanceTeamId: v, assignedTechnicianId: '' })
               }
-              options={mockTeams.map((t) => ({
+              options={teams.map((t) => ({
                 value: t.id.toString(),
                 label: t.name,
               }))}

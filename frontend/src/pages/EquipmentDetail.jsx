@@ -13,10 +13,12 @@ import {
   Shield,
   Clock,
   AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { Header } from '../components/layout';
 import { Card, Button, Badge, Avatar, Modal, EmptyState } from '../components/common';
-import { mockEquipment, mockMaintenanceRequests, equipmentStatusColors, statusColors } from '../data/mockData';
+import { equipmentAPI, maintenanceAPI } from '../services/api';
+import { equipmentStatusColors, statusColors } from '../data/constants';
 import { formatDate, formatStatus, cn } from '../utils/helpers';
 
 const EquipmentDetail = () => {
@@ -25,23 +27,70 @@ const EquipmentDetail = () => {
   const [equipment, setEquipment] = useState(null);
   const [maintenanceRequests, setMaintenanceRequests] = useState([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [activeTab, setActiveTab] = useState('details');
+  const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Find equipment by ID
-    const found = mockEquipment.find((e) => e.id === parseInt(id));
-    setEquipment(found);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const equipmentRes = await equipmentAPI.getById(id);
+        const equipmentData = equipmentRes.data?.data || equipmentRes.data;
+        setEquipment(equipmentData);
 
-    // Get maintenance requests for this equipment
-    if (found) {
-      const requests = mockMaintenanceRequests.filter(
-        (r) => r.equipmentId === found.id
-      );
-      setMaintenanceRequests(requests);
-    }
+        try {
+          const requestsRes = await maintenanceAPI.getByEquipment(id);
+          const requestsData = requestsRes.data?.data || requestsRes.data || [];
+          setMaintenanceRequests(requestsData);
+        } catch (reqErr) {
+          console.error('Error fetching maintenance requests:', reqErr);
+          setMaintenanceRequests([]);
+        }
+
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching equipment:', err);
+        setError('Equipment not found');
+        setEquipment(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, [id]);
 
-  if (!equipment) {
+  const handleDelete = async () => {
+    try {
+      setDeleting(true);
+      await equipmentAPI.delete(id);
+      navigate('/equipment');
+    } catch (err) {
+      console.error('Error deleting equipment:', err);
+      const message = err.response?.data?.message || 'Failed to delete equipment';
+      if (err.response?.status === 403) {
+        alert('Permission denied. Only administrators can delete equipment.');
+      } else {
+        alert(message);
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div>
+        <Header title="Loading..." />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !equipment) {
     return (
       <div>
         <Header title="Equipment Not Found" />
@@ -78,30 +127,30 @@ const EquipmentDetail = () => {
     );
   };
 
-  const isWarrantyExpired = new Date(equipment.warrantyExpiry) < new Date();
+  const isWarrantyExpired = equipment.warrantyExpiry && new Date(equipment.warrantyExpiry) < new Date();
   const openRequests = maintenanceRequests.filter(
     (r) => r.status === 'new' || r.status === 'in_progress'
   );
 
   const infoItems = [
-    { icon: FileText, label: 'Serial Number', value: equipment.serialNumber },
-    { icon: Building2, label: 'Manufacturer', value: `${equipment.manufacturer} ${equipment.model}` },
-    { icon: MapPin, label: 'Location', value: equipment.location },
-    { icon: Building2, label: 'Department', value: equipment.department },
-    { icon: Users, label: 'Owner', value: equipment.owner },
-    { icon: Users, label: 'Maintenance Team', value: equipment.maintenanceTeam },
-    { icon: Calendar, label: 'Purchase Date', value: formatDate(equipment.purchaseDate) },
+    { icon: FileText, label: 'Serial Number', value: equipment.serialNumber || 'N/A' },
+    { icon: Building2, label: 'Manufacturer', value: `${equipment.manufacturer || ''} ${equipment.model || ''}`.trim() || 'N/A' },
+    { icon: MapPin, label: 'Location', value: equipment.location || 'N/A' },
+    { icon: Building2, label: 'Department', value: equipment.department || 'N/A' },
+    { icon: Users, label: 'Owner', value: equipment.owner || 'N/A' },
+    { icon: Users, label: 'Maintenance Team', value: equipment.maintenanceTeam?.name || equipment.Team?.name || 'N/A' },
+    { icon: Calendar, label: 'Purchase Date', value: equipment.purchaseDate ? formatDate(equipment.purchaseDate) : 'N/A' },
     {
       icon: Shield,
       label: 'Warranty Expiry',
-      value: formatDate(equipment.warrantyExpiry),
+      value: equipment.warrantyExpiry ? formatDate(equipment.warrantyExpiry) : 'N/A',
       alert: isWarrantyExpired,
     },
   ];
 
   return (
     <div>
-      <Header title={equipment.name} subtitle={`${equipment.manufacturer} ${equipment.model}`} />
+      <Header title={equipment.name} subtitle={`${equipment.manufacturer || ''} ${equipment.model || ''}`.trim()} />
 
       <div className="p-6">
         {/* Back button and actions */}
@@ -228,7 +277,7 @@ const EquipmentDetail = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Avatar name={request.assignedTechnician} size="sm" />
+                        <Avatar name={request.assignedTechnician || request.AssignedTechnician?.name || 'Unassigned'} size="sm" />
                         {getRequestStatusBadge(request.status)}
                       </div>
                     </div>
@@ -328,17 +377,15 @@ const EquipmentDetail = () => {
         size="sm"
         footer={
           <>
-            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
+            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>
               Cancel
             </Button>
             <Button
               variant="danger"
-              onClick={() => {
-                // Delete logic here
-                navigate('/equipment');
-              }}
+              onClick={handleDelete}
+              disabled={deleting}
             >
-              Delete
+              {deleting ? 'Deleting...' : 'Delete'}
             </Button>
           </>
         }

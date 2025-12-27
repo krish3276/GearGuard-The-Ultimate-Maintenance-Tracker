@@ -10,10 +10,11 @@ import {
   TrendingUp,
   Calendar,
   ArrowRight,
+  Loader2,
 } from 'lucide-react';
 import { Header } from '../components/layout';
 import { Card, Badge, Avatar } from '../components/common';
-import { mockEquipment, mockMaintenanceRequests, mockTeams } from '../data/mockData';
+import { equipmentAPI, maintenanceAPI, teamsAPI } from '../services/api';
 import { formatDate, formatStatus } from '../utils/helpers';
 
 const Dashboard = () => {
@@ -28,31 +29,55 @@ const Dashboard = () => {
 
   const [recentRequests, setRecentRequests] = useState([]);
   const [upcomingMaintenance, setUpcomingMaintenance] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Calculate stats from mock data
-    const operational = mockEquipment.filter((e) => e.status === 'operational').length;
-    const openReqs = mockMaintenanceRequests.filter(
-      (r) => r.status === 'new' || r.status === 'in_progress'
-    ).length;
-    const overdueReqs = mockMaintenanceRequests.filter((r) => r.isOverdue).length;
-    const completed = mockMaintenanceRequests.filter((r) => r.status === 'repaired').length;
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [equipmentRes, requestsRes, teamsRes] = await Promise.all([
+          equipmentAPI.getAll(),
+          maintenanceAPI.getAll(),
+          teamsAPI.getAll(),
+        ]);
 
-    setStats({
-      totalEquipment: mockEquipment.length,
-      operationalEquipment: operational,
-      openRequests: openReqs,
-      overdueRequests: overdueReqs,
-      completedThisMonth: completed,
-      activeTeams: mockTeams.length,
-    });
+        const equipment = equipmentRes.data?.data || equipmentRes.data || [];
+        const requests = requestsRes.data?.data || requestsRes.data || [];
+        const teams = teamsRes.data?.data || teamsRes.data || [];
 
-    setRecentRequests(mockMaintenanceRequests.slice(0, 5));
-    setUpcomingMaintenance(
-      mockMaintenanceRequests
-        .filter((r) => r.type === 'preventive' && r.scheduledDate)
-        .slice(0, 4)
-    );
+        const operational = equipment.filter((e) => !e.is_scrapped).length;
+        const openReqs = requests.filter(
+          (r) => r.status === 'New' || r.status === 'In Progress'
+        ).length;
+        const overdueReqs = requests.filter((r) => r.isOverdue).length;
+        const completed = requests.filter((r) => r.status === 'Repaired').length;
+
+        setStats({
+          totalEquipment: equipment.length,
+          operationalEquipment: operational,
+          openRequests: openReqs,
+          overdueRequests: overdueReqs,
+          completedThisMonth: completed,
+          activeTeams: teams.length,
+        });
+
+        setRecentRequests(requests.slice(0, 5));
+        setUpcomingMaintenance(
+          requests
+            .filter((r) => r.type === 'Preventive' && r.scheduled_date)
+            .slice(0, 4)
+        );
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const statCards = [
@@ -92,13 +117,14 @@ const Dashboard = () => {
   ];
 
   const getStatusBadge = (status) => {
+    const statusKey = status?.toLowerCase().replace(' ', '_') || 'new';
     const variants = {
       new: 'info',
       in_progress: 'warning',
       repaired: 'success',
       scrap: 'danger',
     };
-    return <Badge variant={variants[status] || 'default'}>{formatStatus(status)}</Badge>;
+    return <Badge variant={variants[statusKey] || 'default'}>{status || 'New'}</Badge>;
   };
 
   const getPriorityBadge = (priority) => {
@@ -110,6 +136,31 @@ const Dashboard = () => {
     };
     return <Badge variant={variants[priority] || 'default'}>{priority}</Badge>;
   };
+
+  if (loading) {
+    return (
+      <div>
+        <Header title="Dashboard" subtitle="Welcome back! Here's what's happening today." />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <Header title="Dashboard" subtitle="Welcome back! Here's what's happening today." />
+        <div className="p-6">
+          <Card className="text-center py-12">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-600">{error}</p>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -195,20 +246,27 @@ const Dashboard = () => {
                           </div>
                         </td>
                         <td className="py-3 px-4 text-sm text-gray-600">
-                          {request.equipmentName}
+                          {request.equipment?.name || '-'}
                         </td>
-                        <td className="py-3 px-4">{getPriorityBadge(request.priority)}</td>
+                        <td className="py-3 px-4">{getPriorityBadge(request.priority || 'medium')}</td>
                         <td className="py-3 px-4">{getStatusBadge(request.status)}</td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
-                            <Avatar name={request.assignedTechnician} size="xs" />
+                            <Avatar name={request.assignedTechnician?.name || 'Unassigned'} size="xs" />
                             <span className="text-sm text-gray-600">
-                              {request.assignedTechnician}
+                              {request.assignedTechnician?.name || 'Unassigned'}
                             </span>
                           </div>
                         </td>
                       </tr>
                     ))}
+                    {recentRequests.length === 0 && (
+                      <tr>
+                        <td colSpan="5" className="py-8 text-center text-gray-500">
+                          No maintenance requests found
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -240,9 +298,9 @@ const Dashboard = () => {
                       <p className="text-sm font-medium text-gray-900 truncate">
                         {item.subject}
                       </p>
-                      <p className="text-xs text-gray-500">{item.equipmentName}</p>
+                      <p className="text-xs text-gray-500">{item.equipment?.name || '-'}</p>
                       <p className="text-xs text-primary-600 mt-1">
-                        {formatDate(item.scheduledDate)}
+                        {formatDate(item.scheduled_date)}
                       </p>
                     </div>
                   </div>
