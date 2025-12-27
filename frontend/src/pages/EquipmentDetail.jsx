@@ -20,7 +20,7 @@ import {
   Building,
 } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card, Button, Badge, Avatar, Modal, Input, Select, Textarea } from '../components/common';
+import { Card, Button, Badge, Avatar, Modal, Input, Select, Textarea, SkeletonCard, Skeleton, SkeletonTableRow, SkeletonAvatar } from '../components/common';
 import { equipmentAPI, maintenanceAPI, teamsAPI, categoriesAPI, usersAPI } from '../services/api';
 import { departments, locations } from '../data/constants';
 import { formatDate, cn } from '../utils/helpers';
@@ -166,8 +166,85 @@ const EquipmentDetail = () => {
     return (
       <div>
         <Header title="Loading..." />
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        <div className="p-6">
+          {/* Back button skeleton */}
+          <div className="flex items-center justify-between mb-6">
+            <Skeleton className="h-5 w-36" />
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-20 rounded-xl" />
+              <Skeleton className="h-10 w-24 rounded-xl" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              {/* Status Card Skeleton */}
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="w-16 h-16 rounded-xl" />
+                    <div>
+                      <Skeleton className="h-6 w-48 mb-2" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-8 w-24 rounded-full" />
+                </div>
+              </Card>
+
+              {/* Details Card Skeleton */}
+              <Card>
+                <div className="flex items-center justify-between mb-4">
+                  <Skeleton className="h-6 w-40" />
+                  <Skeleton className="h-8 w-28 rounded-xl" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {Array.from({ length: 12 }).map((_, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3 bg-dark-900/30 rounded-xl">
+                      <Skeleton className="w-10 h-10 rounded-lg" />
+                      <div className="flex-1">
+                        <Skeleton className="h-3 w-20 mb-1" />
+                        <Skeleton className="h-4 w-24" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Maintenance History Skeleton */}
+              <Card>
+                <div className="flex items-center justify-between mb-4">
+                  <Skeleton className="h-6 w-44" />
+                  <Skeleton className="h-5 w-20" />
+                </div>
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 rounded-xl border border-dark-700/50 bg-dark-900/50">
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <Skeleton className="h-4 w-48 mb-2" />
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-5 w-20 rounded-full" />
+                            <Skeleton className="h-4 w-24" />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <SkeletonAvatar size="sm" />
+                        <Skeleton className="h-6 w-24 rounded-full" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            {/* Sidebar Skeleton */}
+            <div className="space-y-6">
+              <Skeleton className="h-36 rounded-2xl" />
+              <SkeletonCard hasHeader={false} />
+            </div>
+          </div>
         </div>
       </div>
     );

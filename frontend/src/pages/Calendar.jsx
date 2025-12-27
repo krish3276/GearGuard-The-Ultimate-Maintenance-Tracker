@@ -36,7 +36,7 @@ import {
   eachDayOfInterval,
 } from 'date-fns';
 import { Header } from '../components/layout';
-import { Card, Button, Badge, Avatar, Modal, Input, Select, Textarea } from '../components/common';
+import { Card, Button, Badge, Avatar, Modal, Input, Select, Textarea, SkeletonStatCard, Skeleton, SkeletonCalendar } from '../components/common';
 import { maintenanceAPI, equipmentAPI, teamsAPI } from '../services/api';
 import { cn, formatDate } from '../utils/helpers';
 
@@ -219,11 +219,39 @@ const Calendar = () => {
     return (
       <div>
         <Header title="Maintenance Calendar" subtitle="Schedule and track preventive maintenance" />
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <Loader2 className="w-10 h-10 animate-spin text-primary-500 mx-auto mb-3" />
-            <p className="text-gray-400">Loading calendar...</p>
+        <div className="p-6 space-y-6">
+          {/* Stats Skeleton */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-dark-800/60 backdrop-blur-xl rounded-2xl border border-dark-700/50 p-4">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="w-10 h-10 rounded-xl" />
+                  <div>
+                    <Skeleton className="h-8 w-12 mb-1" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
+
+          {/* Toolbar Skeleton */}
+          <div className="bg-dark-800/60 backdrop-blur-xl rounded-2xl border border-dark-700/50 p-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-24 rounded-xl" />
+                <Skeleton className="h-10 w-20 rounded-xl" />
+                <Skeleton className="h-6 w-40" />
+              </div>
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-36 rounded-lg" />
+                <Skeleton className="h-10 w-28 rounded-xl" />
+              </div>
+            </div>
+          </div>
+
+          {/* Calendar Grid Skeleton */}
+          <SkeletonCalendar />
         </div>
       </div>
     );

@@ -11,7 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card, Button, Badge, Avatar, Modal, Input, Select, Textarea, SearchInput } from '../components/common';
+import { Card, Button, Badge, Avatar, Modal, Input, Select, Textarea, SearchInput, SkeletonKanbanColumn, Skeleton } from '../components/common';
 import { maintenanceAPI, equipmentAPI, teamsAPI, usersAPI } from '../services/api';
 import { statusColors, priorityColors } from '../data/constants';
 import { formatDate, cn } from '../utils/helpers';
@@ -250,8 +250,22 @@ const MaintenanceRequests = () => {
     return (
       <div>
         <Header title="Maintenance Requests" subtitle="Track and manage all maintenance work orders" />
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        <div className="p-4 md:p-6">
+          {/* Toolbar Skeleton */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 md:mb-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Skeleton className="h-10 w-64 rounded-xl" />
+              <Skeleton className="h-10 w-24 rounded-xl" />
+            </div>
+            <Skeleton className="h-10 w-32 rounded-xl" />
+          </div>
+
+          {/* Kanban Columns Skeleton */}
+          <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 md:pb-6">
+            {[3, 2, 1, 1].map((cardCount, i) => (
+              <SkeletonKanbanColumn key={i} cardCount={cardCount} />
+            ))}
+          </div>
         </div>
       </div>
     );

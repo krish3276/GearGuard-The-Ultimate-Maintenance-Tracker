@@ -10,7 +10,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card, Button, Badge, SearchInput, Modal, Input, Select, Textarea } from '../components/common';
+import { Card, Button, Badge, SearchInput, Modal, Input, Select, Textarea, SkeletonTableRow, Skeleton } from '../components/common';
 import { equipmentAPI, teamsAPI, categoriesAPI, usersAPI } from '../services/api';
 import { departments, locations } from '../data/constants';
 import { formatDate, cn } from '../utils/helpers';
@@ -200,8 +200,40 @@ const Equipment = () => {
     return (
       <div>
         <Header title="Equipment" subtitle="Manage and monitor all your equipment" />
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        <div className="p-6">
+          <Card>
+            {/* Toolbar Skeleton */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-10 w-20 rounded-xl" />
+                <Skeleton className="h-6 w-28" />
+              </div>
+              <div className="flex items-center gap-3 flex-1 justify-end">
+                <Skeleton className="h-10 w-80 rounded-xl" />
+                <Skeleton className="h-10 w-24 rounded-xl" />
+              </div>
+            </div>
+
+            {/* Table Skeleton */}
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-dark-700/50">
+                    {['Equipment Name', 'Employee', 'Department', 'Serial Number', 'Technician', 'Category', 'Company', 'Actions'].map((_, i) => (
+                      <th key={i} className="table-header">
+                        <Skeleton className="h-3 w-20" />
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-dark-700/30">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <SkeletonTableRow key={i} cols={8} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </div>
       </div>
     );

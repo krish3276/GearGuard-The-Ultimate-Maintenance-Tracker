@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Users, ChevronRight, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card, Button, Avatar, Badge, Modal, Input, Textarea } from '../components/common';
+import { Card, Button, Avatar, Badge, Modal, Input, Textarea, SkeletonCard, Skeleton } from '../components/common';
 import { teamsAPI } from '../services/api';
 import { cn } from '../utils/helpers';
 
@@ -112,8 +112,18 @@ const Teams = () => {
     return (
       <div>
         <Header title="Maintenance Teams" subtitle="Manage your maintenance teams and technicians" />
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        <div className="p-4 md:p-6">
+          {/* Actions Skeleton */}
+          <div className="flex justify-end mb-4 md:mb-6">
+            <Skeleton className="h-10 w-28 rounded-xl" />
+          </div>
+
+          {/* Teams Grid Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={i} hasFooter />
+            ))}
+          </div>
         </div>
       </div>
     );
