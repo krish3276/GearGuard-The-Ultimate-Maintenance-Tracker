@@ -46,9 +46,7 @@
   - [Environment Variables](#environment-variables)
   - [Database Setup](#database-setup)
   - [Running the Application](#running-the-application)
-- [API Documentation](#-api-documentation)
 - [Contributing](#-contributing)
-- [License](#-license)
 
 ---
 
@@ -346,13 +344,6 @@ Contributions are welcome! Here's how you can help:
 - Test your changes thoroughly
 
 ---
-
-## 📄 License
-
-This project is licensed under the ISC License - see the [LICENSE](LICENSE) file for details.
-
----
-
 ## 👨‍💻 Author
 
 **Krish**
