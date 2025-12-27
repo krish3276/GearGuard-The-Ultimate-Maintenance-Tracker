@@ -5,7 +5,6 @@ import {
     Shield,
     Database,
     Globe,
-    Palette,
     Mail,
     Smartphone,
     Clock,

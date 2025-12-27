@@ -7,7 +7,6 @@ import {
   MapPin,
   Lock,
   Bell,
-  Palette,
   Save,
   Edit2,
   Eye,
@@ -48,7 +47,6 @@ const Profile = () => {
     emailNotifications: true,
     maintenanceAlerts: true,
     systemUpdates: false,
-    theme: 'dark',
   });
 
   const handleProfileSave = async () => {
@@ -299,7 +297,7 @@ const Profile = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             {/* Notification Preferences */}
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-gray-300">Notifications</h4>
@@ -347,46 +345,7 @@ const Profile = () => {
               </div>
             </div>
 
-            {/* Theme Preferences */}
-            <div className="space-y-4">
-              <h4 className="text-sm font-medium text-gray-300">Appearance</h4>
 
-              <div className="p-4 bg-dark-900/50 rounded-xl border border-dark-700/50">
-                <div className="flex items-center gap-3 mb-4">
-                  <Palette className="w-5 h-5 text-gray-500" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-200">Theme</p>
-                    <p className="text-xs text-gray-500">Choose your preferred theme</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setPreferences({ ...preferences, theme: 'light' })}
-                    className={cn(
-                      'flex-1 p-3 rounded-xl border-2 transition-all duration-200',
-                      preferences.theme === 'light'
-                        ? 'border-primary-500 bg-white'
-                        : 'border-dark-600 bg-white/10 hover:border-dark-500'
-                    )}
-                  >
-                    <div className="w-full h-8 bg-gray-200 rounded-lg mb-2" />
-                    <span className="text-sm font-medium text-gray-400">Light</span>
-                  </button>
-                  <button
-                    onClick={() => setPreferences({ ...preferences, theme: 'dark' })}
-                    className={cn(
-                      'flex-1 p-3 rounded-xl border-2 transition-all duration-200',
-                      preferences.theme === 'dark'
-                        ? 'border-primary-500 bg-dark-700'
-                        : 'border-dark-600 bg-dark-700 hover:border-dark-500'
-                    )}
-                  >
-                    <div className="w-full h-8 bg-dark-600 rounded-lg mb-2" />
-                    <span className="text-sm font-medium text-gray-300">Dark</span>
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         </Card>
       </div>
