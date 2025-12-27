@@ -7,3 +7,4 @@ export { default as TeamDetail } from './TeamDetail';
 export { default as MaintenanceRequests } from './MaintenanceRequests';
 export { default as Calendar } from './Calendar';
 export { default as Profile } from './Profile';
+export { default as Settings } from './Settings';

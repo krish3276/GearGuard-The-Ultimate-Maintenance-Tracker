@@ -12,6 +12,7 @@ import {
   MaintenanceRequests,
   Calendar,
   Profile,
+  Settings,
 } from './pages';
 
 // Protected Route wrapper
@@ -66,6 +67,7 @@ function AppRoutes() {
         <Route path="maintenance" element={<MaintenanceRequests />} />
         <Route path="calendar" element={<Calendar />} />
         <Route path="profile" element={<Profile />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
 
       {/* Catch all - redirect to dashboard */}

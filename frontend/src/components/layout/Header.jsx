@@ -230,7 +230,13 @@ const Header = ({ title, subtitle }) => {
                     <User className="w-4 h-4" />
                     Profile
                   </button>
-                  <button className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      navigate('/settings');
+                    }}
+                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
                     <Settings className="w-4 h-4" />
                     Settings
                   </button>
