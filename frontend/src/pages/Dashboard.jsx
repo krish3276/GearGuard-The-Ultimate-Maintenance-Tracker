@@ -20,7 +20,7 @@ import {
   PlayCircle,
 } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card, Badge } from '../components/common';
+import { Card, Badge, SkeletonStatCard, SkeletonTableRow, SkeletonCard, SkeletonDashboardWelcome, SkeletonActivityItem, SkeletonQuickAction, Skeleton } from '../components/common';
 import { equipmentAPI, maintenanceAPI, teamsAPI } from '../services/api';
 import { formatDate } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
@@ -330,15 +330,128 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div>
+      <div className="min-h-screen">
         <Header title="Dashboard" subtitle="Welcome back! Here's what's happening today." />
-        <div className="flex items-center justify-center h-64">
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative">
-              <div className="w-16 h-16 border-4 border-primary-500/20 rounded-full animate-pulse" />
-              <Loader2 className="w-8 h-8 animate-spin text-primary-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+        <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+          {/* Welcome Section Skeleton */}
+          <SkeletonDashboardWelcome />
+
+          {/* Stats Grid Skeleton */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <SkeletonStatCard key={i} />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+            {/* Main Content Skeleton */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Recent Requests Table Skeleton */}
+              <Card>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-10 h-10 rounded-xl" />
+                    <div>
+                      <Skeleton className="h-5 w-48 mb-1" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-10 w-24 rounded-xl" />
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-dark-700/50">
+                        {['Subject', 'Equipment', 'Assigned To', 'Status', 'Priority'].map((_, i) => (
+                          <th key={i} className="py-3 px-6">
+                            <Skeleton className="h-3 w-20" />
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <SkeletonTableRow key={i} cols={5} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+
+              {/* Equipment Health Skeleton */}
+              <Card>
+                <div className="flex items-center gap-3 mb-6">
+                  <Skeleton className="w-10 h-10 rounded-xl" />
+                  <div>
+                    <Skeleton className="h-5 w-48 mb-1" />
+                    <Skeleton className="h-3 w-40" />
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="flex justify-between">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-4 w-8" />
+                      </div>
+                      <Skeleton className="h-2 w-full rounded-full" />
+                    </div>
+                  ))}
+                </div>
+              </Card>
             </div>
-            <p className="text-gray-400 animate-pulse">Loading dashboard...</p>
+
+            {/* Sidebar Skeleton */}
+            <div className="space-y-6">
+              {/* Upcoming Maintenance Skeleton */}
+              <Card>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-10 h-10 rounded-xl" />
+                    <Skeleton className="h-5 w-24" />
+                  </div>
+                  <Skeleton className="w-6 h-6 rounded" />
+                </div>
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-start gap-3 p-3">
+                      <Skeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
+                      <div className="flex-1">
+                        <Skeleton className="h-4 w-full mb-1" />
+                        <Skeleton className="h-3 w-24 mb-1" />
+                        <Skeleton className="h-3 w-20" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Quick Actions Skeleton */}
+              <Card>
+                <Skeleton className="h-5 w-28 mb-4" />
+                <div className="grid grid-cols-2 gap-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <SkeletonQuickAction key={i} />
+                  ))}
+                </div>
+              </Card>
+
+              {/* Activity Skeleton */}
+              <Card>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-10 h-10 rounded-xl" />
+                    <Skeleton className="h-5 w-20" />
+                  </div>
+                  <Skeleton className="h-4 w-12 rounded-full" />
+                </div>
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <SkeletonActivityItem key={i} />
+                  ))}
+                </div>
+              </Card>
+            </div>
           </div>
         </div>
       </div>

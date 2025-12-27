@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Plus, FolderTree, Loader2, AlertTriangle, Trash2, Edit2, ArrowLeft, Package } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card, Button, Badge, Modal, Input, Select, SearchInput } from '../components/common';
+import { Card, Button, Badge, Modal, Input, Select, SearchInput, SkeletonTableRow, SkeletonStatCard, Skeleton } from '../components/common';
 import { categoriesAPI, usersAPI, equipmentAPI } from '../services/api';
 import { cn } from '../utils/helpers';
 
@@ -135,8 +135,54 @@ const EquipmentCategories = () => {
         return (
             <div>
                 <Header title="Equipment Categories" subtitle="Organize and manage equipment by category" />
-                <div className="flex items-center justify-center h-64">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+                <div className="p-6">
+                    {/* Stats Cards Skeleton */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <Card key={i}>
+                                <div className="flex items-center gap-4">
+                                    <Skeleton className="w-12 h-12 rounded-xl" />
+                                    <div>
+                                        <Skeleton className="h-8 w-12 mb-1" />
+                                        <Skeleton className="h-4 w-28" />
+                                    </div>
+                                </div>
+                            </Card>
+                        ))}
+                    </div>
+
+                    {/* Toolbar Skeleton */}
+                    <Card className="mb-6">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <Skeleton className="h-10 w-20 rounded-xl" />
+                                <Skeleton className="h-6 w-44" />
+                            </div>
+                            <Skeleton className="h-10 w-80 rounded-xl" />
+                        </div>
+                    </Card>
+
+                    {/* Table Skeleton */}
+                    <Card>
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="border-b border-dark-700/50">
+                                        {['Name', 'Responsible', 'Company', 'Equipment Count', 'Actions'].map((_, i) => (
+                                            <th key={i} className="table-header">
+                                                <Skeleton className="h-3 w-20" />
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-dark-700/30">
+                                    {Array.from({ length: 6 }).map((_, i) => (
+                                        <SkeletonTableRow key={i} cols={5} />
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
                 </div>
             </div>
         );

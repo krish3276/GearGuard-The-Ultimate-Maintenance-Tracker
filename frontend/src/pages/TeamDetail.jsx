@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Mail, Trash2, User, Loader2, Wrench } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card, Button, Avatar, Badge, Modal, EmptyState, Select } from '../components/common';
+import { Card, Button, Avatar, Badge, Modal, EmptyState, Select, SkeletonCard, Skeleton, SkeletonAvatar } from '../components/common';
 import { teamsAPI, usersAPI } from '../services/api';
 
 const TeamDetail = () => {
@@ -101,8 +101,55 @@ const TeamDetail = () => {
     return (
       <div>
         <Header title="Loading..." />
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        <div className="p-6">
+          {/* Back button skeleton */}
+          <div className="flex items-center justify-between mb-6">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-10 w-36 rounded-xl" />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Team Info Skeleton */}
+            <div className="lg:col-span-1">
+              <Card>
+                <Skeleton className="w-16 h-16 rounded-xl mb-4" />
+                <Skeleton className="h-6 w-40 mb-2" />
+                <Skeleton className="h-4 w-full mb-1" />
+                <Skeleton className="h-4 w-2/3 mb-6" />
+                <div className="pt-6 border-t border-dark-700/50">
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-6 w-8 rounded-full" />
+                  </div>
+                </div>
+                <div className="mt-6 pt-6 border-t border-dark-700/50">
+                  <Skeleton className="h-10 w-full rounded-xl" />
+                </div>
+              </Card>
+            </div>
+
+            {/* Technicians List Skeleton */}
+            <div className="lg:col-span-2">
+              <Card>
+                <Skeleton className="h-6 w-28 mb-4" />
+                <div className="space-y-4">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 bg-dark-900/50 rounded-xl border border-dark-700/50">
+                      <div className="flex items-center gap-4">
+                        <SkeletonAvatar size="lg" />
+                        <div>
+                          <Skeleton className="h-5 w-32 mb-2" />
+                          <Skeleton className="h-4 w-48 mb-2" />
+                          <Skeleton className="h-5 w-20 rounded-full" />
+                        </div>
+                      </div>
+                      <Skeleton className="w-8 h-8 rounded-lg" />
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+          </div>
         </div>
       </div>
     );

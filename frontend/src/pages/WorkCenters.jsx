@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Factory, Loader2, AlertTriangle, Trash2, Edit2 } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card, Button, Badge, Modal, Input } from '../components/common';
+import { Card, Button, Badge, Modal, Input, SkeletonTableRow, Skeleton } from '../components/common';
 import { workCentersAPI } from '../services/api';
 
 const WorkCenters = () => {
@@ -120,8 +120,30 @@ const WorkCenters = () => {
         return (
             <div>
                 <Header title="Work Centers" subtitle="Manage manufacturing work centers" />
-                <div className="flex items-center justify-center h-64">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+                <div className="p-6">
+                    <div className="flex justify-end mb-6">
+                        <Skeleton className="h-10 w-36 rounded-xl" />
+                    </div>
+                    <Card>
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="border-b border-dark-700/50">
+                                        {['Work Center', 'Code', 'Tag', 'Alternative', 'Cost/Hour', 'Capacity', 'Efficiency', 'OEE', 'Actions'].map((_, i) => (
+                                            <th key={i} className="table-header">
+                                                <Skeleton className="h-3 w-16" />
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-dark-700/30">
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                        <SkeletonTableRow key={i} cols={9} />
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
                 </div>
             </div>
         );

@@ -10,3 +10,20 @@ export { default as Input } from './Input';
 export { default as Textarea } from './Textarea';
 export { default as Alert } from './Alert';
 export { default as EmptyState } from './EmptyState';
+export {
+  Skeleton,
+  SkeletonText,
+  SkeletonAvatar,
+  SkeletonStatCard,
+  SkeletonTableRow,
+  SkeletonCard,
+  SkeletonKanbanCard,
+  SkeletonKanbanColumn,
+  SkeletonDetailPage,
+  SkeletonForm,
+  SkeletonCalendar,
+  SkeletonProfile,
+  SkeletonDashboardWelcome,
+  SkeletonActivityItem,
+  SkeletonQuickAction,
+} from './Skeleton';
