@@ -374,7 +374,6 @@
 /* Table Row Hover */
 .table-row-hover {
   position: relative;
-  overflow: hidden;
 }
 
 .table-row-hover::before {
@@ -385,12 +384,12 @@
   height: 100%;
   width: 3px;
   background: linear-gradient(to bottom, #6366f1, #06b6d4);
-  transform: scaleY(0);
-  transition: transform 0.2s ease;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .table-row-hover:hover::before {
-  transform: scaleY(1);
+  opacity: 1;
 }
 
 /* Quick Action Button */

@@ -1,7 +1,8 @@
-import { Bell, Search, LogOut, User, Settings, Check, Trash2, Wrench, AlertTriangle, Info, CheckCircle, Clock } from 'lucide-react';
+import { Bell, Search, LogOut, User, Settings, Check, Trash2, Wrench, AlertTriangle, Info, CheckCircle, Clock, Menu } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { useSidebar } from '../../context/SidebarContext';
 import { useNavigate } from 'react-router-dom';
 import Avatar from '../common/Avatar';
 import { formatDistanceToNow } from 'date-fns';
@@ -9,6 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 const Header = ({ title, subtitle }) => {
   const { user, logout } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
+  const { toggle } = useSidebar();
   const navigate = useNavigate();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -75,17 +77,26 @@ const Header = ({ title, subtitle }) => {
 
   return (
     <header className="sticky top-0 z-30 bg-dark-900/80 backdrop-blur-xl border-b border-dark-700/50">
-      <div className="flex items-center justify-between h-16 px-6">
-        {/* Left Section - Title */}
-        <div>
-          <h1 className="text-xl font-semibold text-gray-100">{title}</h1>
-          {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
+      <div className="flex items-center justify-between h-16 px-4 md:px-6">
+        {/* Left Section - Menu & Title */}
+        <div className="flex items-center gap-3">
+          {/* Mobile menu button */}
+          <button
+            onClick={toggle}
+            className="lg:hidden p-2.5 text-gray-400 hover:text-white hover:bg-glass-hover rounded-xl transition-all duration-300"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-lg md:text-xl font-semibold text-gray-100">{title}</h1>
+            {subtitle && <p className="text-xs md:text-sm text-gray-500 hidden sm:block">{subtitle}</p>}
+          </div>
         </div>
 
         {/* Right Section - Actions */}
-        <div className="flex items-center gap-3">
-          {/* Search */}
-          <button className="p-2.5 text-gray-400 hover:text-white hover:bg-glass-hover rounded-xl transition-all duration-300">
+        <div className="flex items-center gap-2 md:gap-3">
+          {/* Search - hide on very small screens */}
+          <button className="hidden sm:block p-2.5 text-gray-400 hover:text-white hover:bg-glass-hover rounded-xl transition-all duration-300">
             <Search className="w-5 h-5" />
           </button>
 
@@ -105,7 +116,7 @@ const Header = ({ title, subtitle }) => {
 
             {/* Notifications Dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-96 bg-dark-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-dark-700/50 overflow-hidden">
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-dark-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-dark-700/50 overflow-hidden">
                 {/* Header */}
                 <div className="px-4 py-3 border-b border-dark-700/50 flex items-center justify-between bg-dark-900/50">
                   <div>
@@ -126,7 +137,7 @@ const Header = ({ title, subtitle }) => {
                 </div>
 
                 {/* Notification List */}
-                <div className="max-h-96 overflow-y-auto">
+                <div className="max-h-80 sm:max-h-96 overflow-y-auto">
                   {notifications.length === 0 ? (
                     <div className="px-4 py-8 text-center">
                       <Bell className="w-12 h-12 text-gray-600 mx-auto mb-3" />
@@ -201,7 +212,7 @@ const Header = ({ title, subtitle }) => {
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-3 p-2 hover:bg-glass-hover rounded-xl transition-all duration-300"
+              className="flex items-center gap-2 md:gap-3 p-2 hover:bg-glass-hover rounded-xl transition-all duration-300"
             >
               <Avatar name={user?.name} size="sm" />
               <div className="hidden md:block text-left">

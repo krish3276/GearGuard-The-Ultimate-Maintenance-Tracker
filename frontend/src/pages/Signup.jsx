@@ -230,7 +230,7 @@ const Signup = () => {
                 </div>
 
                 <p className="text-center text-gray-500 text-sm mt-6">
-                    © 2024 GearGuard. All rights reserved.
+                    © 2025 GearGuard. All rights reserved.
                 </p>
             </div>
         </div>

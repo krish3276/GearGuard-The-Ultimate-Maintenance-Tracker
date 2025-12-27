@@ -278,16 +278,16 @@ const MaintenanceRequests = () => {
         subtitle="Track and manage all maintenance work orders"
       />
 
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         {/* Toolbar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 md:mb-6">
+          <div className="flex items-center gap-2 sm:gap-3">
             <SearchInput
               value={searchTerm}
               onChange={setSearchTerm}
               onClear={() => setSearchTerm('')}
-              placeholder="Search requests..."
-              className="w-64"
+              placeholder="Search..."
+              className="w-full sm:w-64"
             />
             <div className="flex items-center bg-dark-800/50 border border-dark-700/50 rounded-xl p-1">
               <button
@@ -321,11 +321,11 @@ const MaintenanceRequests = () => {
 
         {/* Kanban View */}
         {viewMode === 'kanban' && (
-          <div className="flex gap-6 overflow-x-auto pb-6">
+          <div className="flex gap-4 md:gap-6 overflow-x-auto pb-4 md:pb-6 -mx-4 px-4 md:mx-0 md:px-0">
             {columns.map((column) => (
               <div
                 key={column.id}
-                className="bg-dark-800/40 backdrop-blur-lg rounded-2xl p-4 min-h-[500px] w-80 flex-shrink-0 border border-dark-700/30"
+                className="bg-dark-800/40 backdrop-blur-lg rounded-2xl p-4 min-h-[400px] md:min-h-[500px] w-72 md:w-80 flex-shrink-0 border border-dark-700/30"
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, column.id)}
               >
@@ -497,7 +497,7 @@ const MaintenanceRequests = () => {
         }
       >
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Request Type"
               value={formData.type}
@@ -550,7 +550,7 @@ const MaintenanceRequests = () => {
             required
           />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Select
               label="Maintenance Team"
               value={formData.maintenanceTeamId}
@@ -610,7 +610,7 @@ const MaintenanceRequests = () => {
             </div>
 
             {/* Info Grid */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="p-4 bg-dark-900/50 rounded-xl border border-dark-700/50">
                 <p className="text-xs text-gray-500 mb-1">Type</p>
                 <Badge

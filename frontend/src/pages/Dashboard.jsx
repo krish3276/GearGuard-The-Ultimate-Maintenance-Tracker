@@ -363,26 +363,26 @@ const Dashboard = () => {
     <div className="min-h-screen">
       <Header title="Dashboard" subtitle="Welcome back! Here's what's happening today." />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Hero Welcome Section */}
-        <div className="relative overflow-hidden rounded-3xl gradient-border">
-          <div className="gradient-mesh p-8">
-            <div className="flex items-center justify-between">
+        <div className="relative overflow-hidden rounded-2xl md:rounded-3xl gradient-border">
+          <div className="gradient-mesh p-4 md:p-8">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
-                <h2 className="text-3xl font-bold text-white mb-2">
+                <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-white mb-2">
                   {greeting}, <span className="gradient-text">{user?.name || 'User'}</span>! 👋
                 </h2>
-                <p className="text-gray-400 text-lg max-w-xl">
+                <p className="text-gray-400 text-sm sm:text-base md:text-lg max-w-xl">
                   Your maintenance operations are running smoothly. Here's a quick overview of today's status.
                 </p>
-                <div className="flex items-center gap-4 mt-6">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+                <div className="flex flex-wrap items-center gap-2 md:gap-4 mt-4 md:mt-6">
+                  <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
                     <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                    <span className="text-emerald-400 text-sm font-medium">System Operational</span>
+                    <span className="text-emerald-400 text-xs md:text-sm font-medium">System Operational</span>
                   </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-primary-500/10 border border-primary-500/20 rounded-full">
-                    <Activity className="w-4 h-4 text-primary-400" />
-                    <span className="text-primary-400 text-sm font-medium">
+                  <div className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-primary-500/10 border border-primary-500/20 rounded-full">
+                    <Activity className="w-3 h-3 md:w-4 md:h-4 text-primary-400" />
+                    <span className="text-primary-400 text-xs md:text-sm font-medium">
                       {stats.inProgressRequests} tasks in progress
                     </span>
                   </div>
@@ -412,7 +412,7 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {statCards.map((stat, index) => (
             <Link key={stat.title} to={stat.link} className="block">
               <div
@@ -486,44 +486,44 @@ const Dashboard = () => {
           ))}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
           {/* Recent Maintenance Requests */}
           <div className="lg:col-span-2">
             <Card className="overflow-hidden">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-primary-500/10 rounded-xl">
                     <Wrench className="w-5 h-5 text-primary-400" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-white">Recent Maintenance Requests</h2>
-                    <p className="text-sm text-gray-500">Latest service requests</p>
+                    <h2 className="text-base md:text-lg font-semibold text-white">Recent Maintenance Requests</h2>
+                    <p className="text-xs md:text-sm text-gray-500 hidden sm:block">Latest service requests</p>
                   </div>
                 </div>
                 <Link
                   to="/maintenance"
-                  className="flex items-center gap-2 text-sm text-primary-400 hover:text-primary-300 font-medium px-4 py-2 bg-primary-500/10 rounded-xl transition-all hover:bg-primary-500/20"
+                  className="flex items-center gap-2 text-sm text-primary-400 hover:text-primary-300 font-medium px-3 py-1.5 md:px-4 md:py-2 bg-primary-500/10 rounded-xl transition-all hover:bg-primary-500/20"
                 >
                   View all <ArrowRight className="w-4 h-4" />
                 </Link>
               </div>
-              <div className="overflow-x-auto -mx-6">
-                <table className="w-full">
+              <div className="overflow-x-auto -mx-4 md:-mx-6">
+                <table className="w-full min-w-[600px]">
                   <thead>
                     <tr className="glass-table-header">
-                      <th className="text-left py-3 px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
+                      <th className="text-left py-3 px-4 md:px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
                         Subject
                       </th>
-                      <th className="text-left py-3 px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
+                      <th className="text-left py-3 px-4 md:px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
                         Equipment
                       </th>
-                      <th className="text-left py-3 px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
+                      <th className="text-left py-3 px-4 md:px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
                         Assigned To
                       </th>
-                      <th className="text-left py-3 px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
+                      <th className="text-left py-3 px-4 md:px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
                         Status
                       </th>
-                      <th className="text-left py-3 px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
+                      <th className="text-left py-3 px-4 md:px-6 text-xs font-semibold text-primary-400 uppercase tracking-wider">
                         Priority
                       </th>
                     </tr>
@@ -532,10 +532,10 @@ const Dashboard = () => {
                     {recentRequests.map((request, index) => (
                       <tr
                         key={request.id}
-                        className="table-row-hover hover:bg-glass-white transition-all duration-200 border-b border-dark-700/30"
+                        className="hover:bg-dark-700/30 transition-all duration-200 border-b border-dark-700/30 last:border-b-0"
                         style={{ animationDelay: `${index * 50}ms` }}
                       >
-                        <td className="py-4 px-6">
+                        <td className="py-3 px-4 md:px-6">
                           <div className="flex items-center gap-3">
                             {request.isOverdue && (
                               <span className="flex h-2 w-2">
@@ -553,7 +553,7 @@ const Dashboard = () => {
                             </div>
                           </div>
                         </td>
-                        <td className="py-4 px-6">
+                        <td className="py-4 px-4 md:px-6">
                           <div className="flex items-center gap-2">
                             <div className="p-1.5 bg-dark-700/50 rounded-lg">
                               <Cog className="w-4 h-4 text-gray-400" />
@@ -563,18 +563,18 @@ const Dashboard = () => {
                             </span>
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-sm text-gray-300">
+                        <td className="py-4 px-4 md:px-6 text-sm text-gray-300">
                           {request.maintenanceTeam?.name || 'Unassigned'}
                         </td>
-                        <td className="py-4 px-6">
+                        <td className="py-4 px-4 md:px-6">
                           {getStatusBadge(request.status)}
                         </td>
-                        <td className="py-4 px-6">
+                        <td className="py-4 px-4 md:px-6">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${request.priority === 'critical' || request.priority === 'high'
-                              ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                              : request.priority === 'medium'
-                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
+                            ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            : request.priority === 'medium'
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
                             }`}>
                             <Zap className="w-3 h-3" />
                             {request.priority || 'Normal'}
