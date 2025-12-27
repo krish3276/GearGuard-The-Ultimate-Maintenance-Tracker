@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Plus,
   LayoutGrid,
@@ -314,9 +315,11 @@ const MaintenanceRequests = () => {
               </button>
             </div>
           </div>
-          <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => setShowCreateModal(true)}>
-            New Request
-          </Button>
+          <Link to="/maintenance/new">
+            <Button leftIcon={<Plus className="w-4 h-4" />}>
+              New Request
+            </Button>
+          </Link>
         </div>
 
         {/* Kanban View */}
