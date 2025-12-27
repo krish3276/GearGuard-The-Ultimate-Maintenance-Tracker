@@ -17,20 +17,28 @@
 ---
 ## 📸 Screenshots
 
+### Login Page
+![Login Page](./ScreenShots/Login.png)
+
 ### Dashboard
 > Modern dashboard with real-time statistics, animated counters, and maintenance overview
+![Dashboard](./ScreenShots/Dashboard.png)
 
 ### Equipment Management
 > Comprehensive equipment listing with search, filter, and status tracking
+![Equipment Management](./ScreenShots/Equipment.png)
 
 ### Maintenance Requests
 > Track and manage maintenance requests with priority levels and status updates
+![Calendar View](./ScreenShots/Maintenance%20Requests.png)
 
 ### Team Management
 > Organize maintenance teams and track assignments
+![Calendar View](./ScreenShots/Maintenance%20Teams.png)
 
 ### Calendar View
 > Visual calendar for scheduling and tracking maintenance activities
+![Calendar View](./ScreenShots/Calendar.png)
 
 ---
 
