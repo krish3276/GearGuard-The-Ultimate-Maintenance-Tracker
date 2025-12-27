@@ -47,6 +47,7 @@
 ## 📋 Table of Contents
 
 - [Overview](#-overview)
+- [User Roles](#User-Roles)
 - [Features](#-features)
 - [Tech Stack](#-tech-stack)
 - [Project Structure](#-project-structure)
