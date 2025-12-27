@@ -16,6 +16,7 @@ const TeamDetail = () => {
   const [selectedUserId, setSelectedUserId] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deletingTeam, setDeletingTeam] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -82,6 +83,20 @@ const TeamDetail = () => {
     }
   };
 
+  const handleDeleteTeam = async () => {
+    if (!confirm(`Are you sure you want to delete "${team.name}"? This action cannot be undone.`)) return;
+    try {
+      setDeletingTeam(true);
+      await teamsAPI.delete(id);
+      navigate('/teams');
+    } catch (err) {
+      console.error('Error deleting team:', err);
+      alert(err.response?.data?.message || 'Failed to delete team');
+    } finally {
+      setDeletingTeam(false);
+    }
+  };
+
   if (loading) {
     return (
       <div>
@@ -112,7 +127,7 @@ const TeamDetail = () => {
     );
   }
 
-  const technicians = team.technicians || team.Users || [];
+  const technicians = team.members || [];
 
   return (
     <div>
@@ -154,6 +169,19 @@ const TeamDetail = () => {
                   <span className="text-sm text-gray-500">Team Members</span>
                   <Badge variant="primary">{technicians.length}</Badge>
                 </div>
+              </div>
+
+              {/* Delete Team Button */}
+              <div className="mt-6 pt-6 border-t border-dark-700/50">
+                <Button
+                  variant="danger"
+                  className="w-full"
+                  onClick={handleDeleteTeam}
+                  disabled={deletingTeam}
+                  leftIcon={deletingTeam ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                >
+                  {deletingTeam ? 'Deleting...' : 'Delete Team'}
+                </Button>
               </div>
             </Card>
           </div>

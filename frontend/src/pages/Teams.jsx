@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Users, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
+import { Plus, Users, ChevronRight, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 import { Header } from '../components/layout';
 import { Card, Button, Avatar, Badge, Modal, Input, Textarea } from '../components/common';
 import { teamsAPI } from '../services/api';
@@ -12,6 +12,9 @@ const Teams = () => {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [teamToDelete, setTeamToDelete] = useState(null);
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -82,6 +85,29 @@ const Teams = () => {
     }
   };
 
+  const handleDeleteTeam = async () => {
+    if (!teamToDelete) return;
+    try {
+      setDeleting(true);
+      await teamsAPI.delete(teamToDelete.id);
+      await fetchTeams();
+      setShowDeleteModal(false);
+      setTeamToDelete(null);
+    } catch (err) {
+      console.error('Error deleting team:', err);
+      alert(err.response?.data?.message || 'Failed to delete team');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openDeleteModal = (e, team) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setTeamToDelete(team);
+    setShowDeleteModal(true);
+  };
+
   if (loading) {
     return (
       <div>
@@ -132,7 +158,16 @@ const Teams = () => {
                   >
                     <Users className="w-6 h-6" style={{ color: team.color || '#3b82f6' }} />
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-500" />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => openDeleteModal(e, team)}
+                      className="p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all duration-200"
+                      title="Delete team"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <ChevronRight className="w-5 h-5 text-gray-500" />
+                  </div>
                 </div>
 
                 <h3 className="text-lg font-semibold text-white mb-1">{team.name}</h3>
@@ -141,7 +176,7 @@ const Teams = () => {
                 <div className="flex items-center justify-between pt-4 border-t border-dark-700/50">
                   <div className="flex items-center gap-2">
                     <div className="flex -space-x-2">
-                      {(team.technicians || team.Users || []).slice(0, 3).map((tech) => (
+                      {(team.members || []).slice(0, 3).map((tech) => (
                         <Avatar
                           key={tech.id}
                           name={tech.name}
@@ -150,14 +185,14 @@ const Teams = () => {
                         />
                       ))}
                     </div>
-                    {(team.technicians || team.Users || []).length > 3 && (
+                    {(team.members || []).length > 3 && (
                       <span className="text-xs text-gray-500">
-                        +{(team.technicians || team.Users || []).length - 3}
+                        +{(team.members || []).length - 3}
                       </span>
                     )}
                   </div>
                   <Badge variant="default">
-                    {(team.technicians || team.Users || []).length} Technician{(team.technicians || team.Users || []).length !== 1 ? 's' : ''}
+                    {(team.members || []).length} Technician{(team.members || []).length !== 1 ? 's' : ''}
                   </Badge>
                 </div>
               </Card>
@@ -226,6 +261,29 @@ const Teams = () => {
             </div>
           </div>
         </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => { setShowDeleteModal(false); setTeamToDelete(null); }}
+        title="Delete Team"
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setShowDeleteModal(false)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleDeleteTeam} disabled={deleting}>
+              {deleting ? 'Deleting...' : 'Delete Team'}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-gray-300">
+          Are you sure you want to delete <strong className="text-white">{teamToDelete?.name}</strong>?
+          This will remove all team members from this team. This action cannot be undone.
+        </p>
       </Modal>
     </div>
   );

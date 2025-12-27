@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Calendar,
   Loader2,
+  Trash2,
 } from 'lucide-react';
 import { Header } from '../components/layout';
 import { Card, Button, Badge, Avatar, Modal, Input, Select, Textarea, SearchInput } from '../components/common';
@@ -27,6 +28,7 @@ const MaintenanceRequests = () => {
   const [draggedCard, setDraggedCard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -203,6 +205,22 @@ const MaintenanceRequests = () => {
       console.error('Error updating status:', err);
       const message = err.response?.data?.message || 'Failed to update status';
       alert(message);
+    }
+  };
+
+  const handleDeleteRequest = async (requestId) => {
+    if (!confirm('Are you sure you want to delete this maintenance request? This action cannot be undone.')) return;
+    try {
+      setDeleting(true);
+      await maintenanceAPI.delete(requestId);
+      await fetchData();
+      setShowDetailModal(false);
+      setSelectedRequest(null);
+    } catch (err) {
+      console.error('Error deleting request:', err);
+      alert(err.response?.data?.message || 'Failed to delete request');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -695,6 +713,19 @@ const MaintenanceRequests = () => {
                 />
               </div>
             )}
+
+            {/* Delete Button */}
+            <div className="pt-4 border-t border-dark-700/50">
+              <Button
+                variant="danger"
+                className="w-full"
+                onClick={() => handleDeleteRequest(selectedRequest.id)}
+                disabled={deleting}
+                leftIcon={deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              >
+                {deleting ? 'Deleting...' : 'Delete Request'}
+              </Button>
+            </div>
           </div>
         )}
       </Modal>
