@@ -47,7 +47,6 @@
   - [Database Setup](#database-setup)
   - [Running the Application](#running-the-application)
 - [API Documentation](#-api-documentation)
-- [Screenshots](#-screenshots)
 - [Contributing](#-contributing)
 - [License](#-license)
 
