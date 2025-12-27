@@ -9,6 +9,7 @@ export { default as WorkCenters } from './WorkCenters';
 export { default as Teams } from './Teams';
 export { default as TeamDetail } from './TeamDetail';
 export { default as MaintenanceRequests } from './MaintenanceRequests';
+export { default as MaintenanceRequestForm } from './MaintenanceRequestForm';
 export { default as Calendar } from './Calendar';
 export { default as Profile } from './Profile';
 export { default as Settings } from './Settings';

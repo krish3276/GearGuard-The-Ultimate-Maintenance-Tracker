@@ -14,6 +14,7 @@ import {
   Teams,
   TeamDetail,
   MaintenanceRequests,
+  MaintenanceRequestForm,
   Calendar,
   Profile,
   Settings,
@@ -79,6 +80,8 @@ function AppRoutes() {
         <Route path="teams" element={<Teams />} />
         <Route path="teams/:id" element={<TeamDetail />} />
         <Route path="maintenance" element={<MaintenanceRequests />} />
+        <Route path="maintenance/new" element={<MaintenanceRequestForm />} />
+        <Route path="maintenance/:id" element={<MaintenanceRequestForm />} />
         <Route path="calendar" element={<Calendar />} />
         <Route path="profile" element={<Profile />} />
         <Route path="settings" element={<Settings />} />
