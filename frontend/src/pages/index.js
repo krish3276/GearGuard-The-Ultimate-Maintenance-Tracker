@@ -3,6 +3,8 @@ export { default as Signup } from './Signup';
 export { default as Dashboard } from './Dashboard';
 export { default as Equipment } from './Equipment';
 export { default as EquipmentDetail } from './EquipmentDetail';
+export { default as EquipmentCategories } from './EquipmentCategories';
+export { default as WorkCenters } from './WorkCenters';
 export { default as Teams } from './Teams';
 export { default as TeamDetail } from './TeamDetail';
 export { default as MaintenanceRequests } from './MaintenanceRequests';

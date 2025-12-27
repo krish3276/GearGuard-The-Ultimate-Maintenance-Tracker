@@ -7,6 +7,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Cog,
+  FolderTree,
+  Factory,
 } from 'lucide-react';
 import { cn } from '../../utils/helpers';
 import { useState } from 'react';
@@ -14,6 +16,8 @@ import { useState } from 'react';
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Equipment', href: '/equipment', icon: Cog },
+  { name: 'Equipment Categories', href: '/equipment-categories', icon: FolderTree },
+  { name: 'Work Centers', href: '/work-centers', icon: Factory },
   { name: 'Maintenance Teams', href: '/teams', icon: Users },
   { name: 'Maintenance Requests', href: '/maintenance', icon: Wrench },
   { name: 'Calendar', href: '/calendar', icon: Calendar },

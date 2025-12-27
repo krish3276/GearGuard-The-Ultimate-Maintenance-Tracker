@@ -8,6 +8,8 @@ import {
   Dashboard,
   Equipment,
   EquipmentDetail,
+  EquipmentCategories,
+  WorkCenters,
   Teams,
   TeamDetail,
   MaintenanceRequests,
@@ -15,32 +17,25 @@ import {
   Profile,
 } from './pages';
 
-// Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
-
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-
   return children;
 };
 
-// Public Route wrapper (redirect to dashboard if logged in)
 const PublicRoute = ({ children }) => {
   const { isAuthenticated } = useAuth();
-
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }
-
   return children;
 };
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public Routes */}
       <Route
         path="/login"
         element={
@@ -58,7 +53,6 @@ function AppRoutes() {
         }
       />
 
-      {/* Protected Routes */}
       <Route
         path="/"
         element={
@@ -70,6 +64,8 @@ function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="equipment" element={<Equipment />} />
         <Route path="equipment/:id" element={<EquipmentDetail />} />
+        <Route path="equipment-categories" element={<EquipmentCategories />} />
+        <Route path="work-centers" element={<WorkCenters />} />
         <Route path="teams" element={<Teams />} />
         <Route path="teams/:id" element={<TeamDetail />} />
         <Route path="maintenance" element={<MaintenanceRequests />} />
@@ -77,7 +73,6 @@ function AppRoutes() {
         <Route path="profile" element={<Profile />} />
       </Route>
 
-      {/* Catch all - redirect to dashboard */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
