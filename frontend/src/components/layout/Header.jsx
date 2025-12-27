@@ -1,4 +1,4 @@
-import { Bell, Search, LogOut, User, Settings, Check, Trash2, Wrench, AlertTriangle, Info, CheckCircle, Clock, Menu } from 'lucide-react';
+import { Bell, LogOut, User, Settings, Check, Trash2, Wrench, AlertTriangle, Info, CheckCircle, Clock, Menu } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
@@ -95,10 +95,6 @@ const Header = ({ title, subtitle }) => {
 
         {/* Right Section - Actions */}
         <div className="flex items-center gap-2 md:gap-3">
-          {/* Search - hide on very small screens */}
-          <button className="hidden sm:block p-2.5 text-gray-400 hover:text-white hover:bg-glass-hover rounded-xl transition-all duration-300">
-            <Search className="w-5 h-5" />
-          </button>
 
           {/* Notifications */}
           <div className="relative" ref={notificationRef}>
@@ -239,7 +235,13 @@ const Header = ({ title, subtitle }) => {
                     <User className="w-4 h-4" />
                     Profile
                   </button>
-                  <button className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-glass-hover transition-all duration-200">
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      navigate('/settings');
+                    }}
+                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-300 hover:text-white hover:bg-glass-hover transition-all duration-200"
+                  >
                     <Settings className="w-4 h-4" />
                     Settings
                   </button>

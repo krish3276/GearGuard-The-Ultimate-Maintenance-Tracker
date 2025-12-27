@@ -1,5 +1,6 @@
 export { default as Login } from './Login';
 export { default as Signup } from './Signup';
+export { default as ForgotPassword } from './ForgotPassword';
 export { default as Dashboard } from './Dashboard';
 export { default as Equipment } from './Equipment';
 export { default as EquipmentDetail } from './EquipmentDetail';
@@ -11,3 +12,4 @@ export { default as MaintenanceRequests } from './MaintenanceRequests';
 export { default as MaintenanceRequestForm } from './MaintenanceRequestForm';
 export { default as Calendar } from './Calendar';
 export { default as Profile } from './Profile';
+export { default as Settings } from './Settings';
