@@ -31,10 +31,9 @@ const navigation = [
 ];
 
 const Sidebar = () => {
-  const [collapsed, setCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState(['Equipment']);
   const location = useLocation();
-  const { isOpen, close } = useSidebar();
+  const { isOpen, close, isCollapsed: collapsed, toggleCollapse } = useSidebar();
 
   // Close sidebar on route change (mobile)
   useEffect(() => {
@@ -232,7 +231,7 @@ const Sidebar = () => {
         {/* Collapse Toggle - Desktop only */}
         <div className="absolute bottom-4 left-0 right-0 px-3 hidden lg:block">
           <button
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={toggleCollapse}
             className={cn(
               'flex items-center justify-center w-full py-3 text-gray-500',
               'hover:text-white hover:bg-glass-hover rounded-xl transition-all duration-300'
