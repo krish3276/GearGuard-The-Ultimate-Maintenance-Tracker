@@ -15,6 +15,24 @@
 </div>
 
 ---
+## 📸 Screenshots
+
+### Dashboard
+> Modern dashboard with real-time statistics, animated counters, and maintenance overview
+
+### Equipment Management
+> Comprehensive equipment listing with search, filter, and status tracking
+
+### Maintenance Requests
+> Track and manage maintenance requests with priority levels and status updates
+
+### Team Management
+> Organize maintenance teams and track assignments
+
+### Calendar View
+> Visual calendar for scheduling and tracking maintenance activities
+
+---
 
 ## 📋 Table of Contents
 
@@ -300,94 +318,6 @@ Before you begin, ensure you have the following installed:
    ```
    http://localhost:5173
    ```
-
----
-
-## 📡 API Documentation
-
-### Base URL
-```
-http://localhost:5000/api
-```
-
-### Authentication Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/auth/register` | Register a new user |
-| POST | `/auth/login` | Login user |
-| GET | `/auth/me` | Get current user |
-
-### Equipment Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/equipment` | Get all equipment |
-| GET | `/equipment/:id` | Get equipment by ID |
-| POST | `/equipment` | Create new equipment |
-| PUT | `/equipment/:id` | Update equipment |
-| DELETE | `/equipment/:id` | Delete equipment |
-
-### Equipment Categories Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/categories` | Get all categories |
-| POST | `/categories` | Create new category |
-| PUT | `/categories/:id` | Update category |
-| DELETE | `/categories/:id` | Delete category |
-
-### Work Centers Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/work-centers` | Get all work centers |
-| POST | `/work-centers` | Create work center |
-| PUT | `/work-centers/:id` | Update work center |
-| DELETE | `/work-centers/:id` | Delete work center |
-
-### Maintenance Requests Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/maintenance` | Get all requests |
-| GET | `/maintenance/:id` | Get request by ID |
-| POST | `/maintenance` | Create new request |
-| PUT | `/maintenance/:id` | Update request |
-| DELETE | `/maintenance/:id` | Delete request |
-
-### Teams Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/teams` | Get all teams |
-| GET | `/teams/:id` | Get team by ID |
-| POST | `/teams` | Create new team |
-| PUT | `/teams/:id` | Update team |
-| DELETE | `/teams/:id` | Delete team |
-| POST | `/teams/:id/members` | Add team member |
-| DELETE | `/teams/:id/members/:userId` | Remove team member |
-
-### Users Endpoints
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/users` | Get all users |
-| GET | `/users/:id` | Get user by ID |
-| PUT | `/users/:id` | Update user |
-| DELETE | `/users/:id` | Delete user |
-
----
-
-## 📸 Screenshots
-
-### Dashboard
-> Modern dashboard with real-time statistics, animated counters, and maintenance overview
-
-### Equipment Management
-> Comprehensive equipment listing with search, filter, and status tracking
-
-### Maintenance Requests
-> Track and manage maintenance requests with priority levels and status updates
-
-### Team Management
-> Organize maintenance teams and track assignments
-
-### Calendar View
-> Visual calendar for scheduling and tracking maintenance activities
 
 ---
 
