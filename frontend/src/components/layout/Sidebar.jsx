@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -6,18 +7,24 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Cog,
   FolderTree,
   Factory,
 } from 'lucide-react';
 import { cn } from '../../utils/helpers';
-import { useState } from 'react';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Equipment', href: '/equipment', icon: Cog },
-  { name: 'Equipment Categories', href: '/equipment-categories', icon: FolderTree },
-  { name: 'Work Centers', href: '/work-centers', icon: Factory },
+  {
+    name: 'Equipment',
+    href: '/equipment',
+    icon: Cog,
+    children: [
+      { name: 'Equipment', href: '/equipment' },
+      { name: 'Work Centers', href: '/work-centers' },
+    ]
+  },
   { name: 'Maintenance Teams', href: '/teams', icon: Users },
   { name: 'Maintenance Requests', href: '/maintenance', icon: Wrench },
   { name: 'Calendar', href: '/calendar', icon: Calendar },
@@ -25,7 +32,29 @@ const navigation = [
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const [expandedItems, setExpandedItems] = useState(['Equipment']);
   const location = useLocation();
+
+  const toggleExpanded = (name) => {
+    setExpandedItems(prev =>
+      prev.includes(name)
+        ? prev.filter(item => item !== name)
+        : [...prev, name]
+    );
+  };
+
+  const isItemActive = (item) => {
+    if (item.children) {
+      return item.children.some(child =>
+        child.href === '/'
+          ? location.pathname === '/'
+          : location.pathname.startsWith(child.href)
+      );
+    }
+    return item.href === '/'
+      ? location.pathname === '/'
+      : location.pathname.startsWith(item.href);
+  };
 
   return (
     <aside
@@ -52,34 +81,99 @@ const Sidebar = () => {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-6 px-3">
+      <nav className="flex-1 py-6 px-3 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 120px)' }}>
         <ul className="space-y-1">
           {navigation.map((item) => {
-            const isActive =
-              item.href === '/'
-                ? location.pathname === '/'
-                : location.pathname.startsWith(item.href);
+            const isActive = isItemActive(item);
+            const isExpanded = expandedItems.includes(item.name);
+            const hasChildren = item.children && item.children.length > 0;
 
             return (
               <li key={item.name}>
-                <NavLink
-                  to={item.href}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium',
-                    'transition-all duration-300',
-                    isActive
-                      ? 'bg-gradient-to-r from-primary-600/80 to-primary-500/60 text-white shadow-glow-sm'
-                      : 'text-gray-400 hover:bg-glass-hover hover:text-white',
-                    collapsed && 'justify-center px-2'
-                  )}
-                  title={collapsed ? item.name : undefined}
-                >
-                  <item.icon className={cn(
-                    'w-5 h-5 flex-shrink-0 transition-colors',
-                    isActive && 'text-white'
-                  )} />
-                  {!collapsed && <span>{item.name}</span>}
-                </NavLink>
+                {hasChildren ? (
+                  <>
+                    {/* Parent with children */}
+                    <button
+                      onClick={() => !collapsed && toggleExpanded(item.name)}
+                      className={cn(
+                        'w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-sm font-medium',
+                        'transition-all duration-300',
+                        isActive
+                          ? 'bg-gradient-to-r from-primary-600/80 to-primary-500/60 text-white shadow-glow-sm'
+                          : 'text-gray-400 hover:bg-glass-hover hover:text-white',
+                        collapsed && 'justify-center px-2'
+                      )}
+                      title={collapsed ? item.name : undefined}
+                    >
+                      <div className="flex items-center gap-3">
+                        <item.icon className={cn(
+                          'w-5 h-5 flex-shrink-0 transition-colors',
+                          isActive && 'text-white'
+                        )} />
+                        {!collapsed && <span>{item.name}</span>}
+                      </div>
+                      {!collapsed && (
+                        <ChevronDown className={cn(
+                          'w-4 h-4 transition-transform duration-200',
+                          isExpanded && 'rotate-180'
+                        )} />
+                      )}
+                    </button>
+
+                    {/* Children */}
+                    {!collapsed && isExpanded && (
+                      <ul className="mt-1 ml-4 pl-4 border-l border-dark-700/50 space-y-1">
+                        {item.children.map((child) => {
+                          const isChildActive = child.href === '/'
+                            ? location.pathname === '/'
+                            : location.pathname === child.href ||
+                            (child.href !== '/equipment' && location.pathname.startsWith(child.href));
+
+                          return (
+                            <li key={child.href}>
+                              <NavLink
+                                to={child.href}
+                                className={cn(
+                                  'flex items-center gap-2 px-3 py-2 rounded-lg text-sm',
+                                  'transition-all duration-200',
+                                  isChildActive
+                                    ? 'bg-primary-500/20 text-primary-400 font-medium'
+                                    : 'text-gray-500 hover:text-gray-300 hover:bg-glass-hover'
+                                )}
+                              >
+                                <div className={cn(
+                                  'w-1.5 h-1.5 rounded-full',
+                                  isChildActive ? 'bg-primary-400' : 'bg-gray-600'
+                                )} />
+                                {child.name}
+                              </NavLink>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </>
+                ) : (
+                  /* Regular nav item */
+                  <NavLink
+                    to={item.href}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium',
+                      'transition-all duration-300',
+                      isActive
+                        ? 'bg-gradient-to-r from-primary-600/80 to-primary-500/60 text-white shadow-glow-sm'
+                        : 'text-gray-400 hover:bg-glass-hover hover:text-white',
+                      collapsed && 'justify-center px-2'
+                    )}
+                    title={collapsed ? item.name : undefined}
+                  >
+                    <item.icon className={cn(
+                      'w-5 h-5 flex-shrink-0 transition-colors',
+                      isActive && 'text-white'
+                    )} />
+                    {!collapsed && <span>{item.name}</span>}
+                  </NavLink>
+                )}
               </li>
             );
           })}
