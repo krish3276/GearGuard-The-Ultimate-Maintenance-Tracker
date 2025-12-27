@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Users, Mail, Wrench, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
+import { Plus, Users, ChevronRight, Loader2, AlertTriangle } from 'lucide-react';
 import { Header } from '../components/layout';
 import { Card, Button, Avatar, Badge, Modal, Input, Textarea } from '../components/common';
 import { teamsAPI } from '../services/api';
@@ -87,7 +87,7 @@ const Teams = () => {
       <div>
         <Header title="Maintenance Teams" subtitle="Manage your maintenance teams and technicians" />
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
         </div>
       </div>
     );
@@ -99,8 +99,8 @@ const Teams = () => {
         <Header title="Maintenance Teams" subtitle="Manage your maintenance teams and technicians" />
         <div className="p-6">
           <Card className="text-center py-12">
-            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <p className="text-red-600 mb-4">{error}</p>
+            <AlertTriangle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
+            <p className="text-rose-400 mb-4">{error}</p>
             <Button onClick={fetchTeams}>Retry</Button>
           </Card>
         </div>
@@ -128,17 +128,17 @@ const Teams = () => {
                 <div className="flex items-start justify-between mb-4">
                   <div
                     className="w-12 h-12 rounded-xl flex items-center justify-center"
-                    style={{ backgroundColor: (team.color || '#3b82f6') + '20' }}
+                    style={{ backgroundColor: (team.color || '#3b82f6') + '30' }}
                   >
                     <Users className="w-6 h-6" style={{ color: team.color || '#3b82f6' }} />
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                  <ChevronRight className="w-5 h-5 text-gray-500" />
                 </div>
 
-                <h3 className="text-lg font-semibold text-gray-900 mb-1">{team.name}</h3>
-                <p className="text-sm text-gray-500 mb-4 line-clamp-2">{team.description}</p>
+                <h3 className="text-lg font-semibold text-white mb-1">{team.name}</h3>
+                <p className="text-sm text-gray-400 mb-4 line-clamp-2">{team.description}</p>
 
-                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                <div className="flex items-center justify-between pt-4 border-t border-dark-700/50">
                   <div className="flex items-center gap-2">
                     <div className="flex -space-x-2">
                       {(team.technicians || team.Users || []).slice(0, 3).map((tech) => (
@@ -146,7 +146,7 @@ const Teams = () => {
                           key={tech.id}
                           name={tech.name}
                           size="sm"
-                          className="ring-2 ring-white"
+                          className="ring-2 ring-dark-800"
                         />
                       ))}
                     </div>
@@ -167,8 +167,8 @@ const Teams = () => {
 
         {teams.length === 0 && (
           <Card className="text-center py-12">
-            <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No teams yet</h3>
+            <Users className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-white mb-2">No teams yet</h3>
             <p className="text-gray-500 mb-4">Create your first maintenance team to get started</p>
             <Button onClick={() => handleOpenModal()}>Create Team</Button>
           </Card>
@@ -208,16 +208,16 @@ const Teams = () => {
             rows={3}
           />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Team Color</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Team Color</label>
             <div className="flex flex-wrap gap-2">
               {colors.map((color) => (
                 <button
                   key={color}
                   onClick={() => setFormData({ ...formData, color })}
                   className={cn(
-                    'w-8 h-8 rounded-lg transition-transform',
+                    'w-8 h-8 rounded-lg transition-all duration-200',
                     formData.color === color
-                      ? 'ring-2 ring-offset-2 ring-gray-400 scale-110'
+                      ? 'ring-2 ring-offset-2 ring-offset-dark-800 ring-white scale-110'
                       : 'hover:scale-105'
                   )}
                   style={{ backgroundColor: color }}

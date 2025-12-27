@@ -3,25 +3,21 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Calendar as CalendarIcon,
   Clock,
-  Wrench,
   Loader2,
   AlertTriangle,
 } from 'lucide-react';
 import {
   format,
-  startOfMonth,
-  endOfMonth,
   startOfWeek,
   endOfWeek,
   addDays,
-  addMonths,
-  subMonths,
-  isSameMonth,
+  addWeeks,
+  subWeeks,
   isSameDay,
   isToday,
   parseISO,
+  getWeek,
 } from 'date-fns';
 import { Header } from '../components/layout';
 import { Card, Button, Badge, Avatar, Modal, Input, Select, Textarea } from '../components/common';
@@ -29,10 +25,10 @@ import { maintenanceAPI, equipmentAPI, teamsAPI } from '../services/api';
 import { cn, formatDate } from '../utils/helpers';
 
 const Calendar = () => {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showDayModal, setShowDayModal] = useState(false);
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [requests, setRequests] = useState([]);
   const [equipment, setEquipment] = useState([]);
   const [teams, setTeams] = useState([]);
@@ -45,12 +41,16 @@ const Calendar = () => {
     description: '',
     equipmentId: '',
     maintenanceTeamId: '',
-    assignedTechnicianId: '',
     scheduledDate: '',
     priority: 'medium',
   };
 
   const [formData, setFormData] = useState(initialFormData);
+
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
+  const weekDays = useMemo(() => {
+    return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  }, [weekStart]);
 
   useEffect(() => {
     fetchData();
@@ -64,134 +64,67 @@ const Calendar = () => {
         equipmentAPI.getAll(),
         teamsAPI.getAll(),
       ]);
-
-      const allRequests = requestsRes.data?.data || requestsRes.data || [];
-      setRequests(allRequests.filter((r) => r.type === 'preventive' && r.scheduledDate));
+      setRequests((requestsRes.data?.data || requestsRes.data || []).filter(r => r.scheduled_date));
       setEquipment(equipmentRes.data?.data || equipmentRes.data || []);
       setTeams(teamsRes.data?.data || teamsRes.data || []);
       setError(null);
     } catch (err) {
       console.error('Error fetching data:', err);
-      setError('Failed to load calendar data');
+      setError('Failed to load data');
     } finally {
       setLoading(false);
     }
   };
 
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(monthStart);
-  const calendarStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-  const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
-
-  const calendarDays = useMemo(() => {
-    const days = [];
-    let day = calendarStart;
-    while (day <= calendarEnd) {
-      days.push(day);
-      day = addDays(day, 1);
-    }
-    return days;
-  }, [currentMonth]);
-
   const getEventsForDay = (date) => {
-    return requests.filter((r) => {
+    return requests.filter(r => {
       try {
-        const eventDate = parseISO(r.scheduledDate);
-        return isSameDay(eventDate, date);
+        return isSameDay(parseISO(r.scheduled_date), date);
       } catch {
         return false;
       }
     });
   };
 
-  const handlePrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
-  const handleNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
-  const handleToday = () => setCurrentMonth(new Date());
-
-  const handleDateClick = (date) => {
-    setSelectedDate(date);
-    const events = getEventsForDay(date);
-    if (events.length > 0) {
-      setShowDayModal(true);
-    } else {
-      setFormData({
-        ...formData,
-        scheduledDate: format(date, 'yyyy-MM-dd'),
-      });
-      setShowCreateModal(true);
-    }
-  };
-
-  const handleEquipmentChange = (equipmentId) => {
-    const equip = equipment.find((e) => e.id === parseInt(equipmentId));
-    if (equip) {
-      setFormData({
-        ...formData,
-        equipmentId,
-        maintenanceTeamId: (equip.maintenanceTeamId || equip.TeamId)?.toString() || '',
-      });
-    } else {
-      setFormData({ ...formData, equipmentId, maintenanceTeamId: '' });
-    }
-  };
-
-  const getTechniciansForTeam = (teamId) => {
-    const team = teams.find((t) => t.id === parseInt(teamId));
-    return team?.technicians || team?.Users || [];
-  };
-
   const handleCreateMaintenance = async () => {
     if (!formData.subject || !formData.equipmentId || !formData.scheduledDate) {
-      alert('Please fill in all required fields');
+      alert('Please fill required fields');
       return;
     }
-
     try {
       setSaving(true);
-      const payload = {
+      await maintenanceAPI.create({
         subject: formData.subject,
         type: 'Preventive',
         equipment_id: parseInt(formData.equipmentId),
         scheduled_date: formData.scheduledDate,
-      };
-
-      // Only include optional fields if they have values
-      if (formData.description) payload.description = formData.description;
-      if (formData.priority) payload.priority = formData.priority;
-      if (formData.maintenanceTeamId) payload.maintenance_team_id = parseInt(formData.maintenanceTeamId);
-      if (formData.assignedTechnicianId) payload.assigned_technician_id = parseInt(formData.assignedTechnicianId);
-
-      await maintenanceAPI.create(payload);
+        priority: formData.priority,
+        ...(formData.description && { description: formData.description }),
+        ...(formData.maintenanceTeamId && { maintenance_team_id: parseInt(formData.maintenanceTeamId) }),
+      });
       await fetchData();
       setFormData(initialFormData);
       setShowCreateModal(false);
     } catch (err) {
-      console.error('Error creating maintenance:', err);
-      const message = err.response?.data?.message || 'Failed to schedule maintenance';
-      alert(message);
+      alert(err.response?.data?.message || 'Failed to create');
     } finally {
       setSaving(false);
     }
   };
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  const getPriorityColor = (priority) => {
-    const colors = {
-      low: 'bg-gray-200 text-gray-700',
-      medium: 'bg-blue-100 text-blue-700',
-      high: 'bg-orange-100 text-orange-700',
-      critical: 'bg-red-100 text-red-700',
-    };
-    return colors[priority] || colors.medium;
-  };
+  const getPriorityColor = (priority) => ({
+    low: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
+    medium: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+    high: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    critical: 'bg-rose-500/20 text-rose-300 border-rose-500/30',
+  }[priority] || 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30');
 
   if (loading) {
     return (
       <div>
-        <Header title="Maintenance Calendar" subtitle="Schedule and view preventive maintenance" />
+        <Header title="Maintenance Calendar" subtitle="Schedule preventive maintenance" />
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
         </div>
       </div>
     );
@@ -200,11 +133,11 @@ const Calendar = () => {
   if (error) {
     return (
       <div>
-        <Header title="Maintenance Calendar" subtitle="Schedule and view preventive maintenance" />
+        <Header title="Maintenance Calendar" subtitle="Schedule preventive maintenance" />
         <div className="p-6">
           <Card className="text-center py-12">
-            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <p className="text-red-600 mb-4">{error}</p>
+            <AlertTriangle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
+            <p className="text-rose-400 mb-4">{error}</p>
             <Button onClick={fetchData}>Retry</Button>
           </Card>
         </div>
@@ -214,360 +147,152 @@ const Calendar = () => {
 
   return (
     <div>
-      <Header
-        title="Maintenance Calendar"
-        subtitle="Schedule and view preventive maintenance"
-      />
+      <Header title="Maintenance Calendar" subtitle="Schedule preventive maintenance" />
 
       <div className="p-6">
-        <Card>
-          {/* Calendar Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <h2 className="text-xl font-semibold text-gray-900">
-                {format(currentMonth, 'MMMM yyyy')}
-              </h2>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={handlePrevMonth}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <ChevronLeft className="w-5 h-5 text-gray-600" />
-                </button>
-                <button
-                  onClick={handleNextMonth}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <ChevronRight className="w-5 h-5 text-gray-600" />
-                </button>
-              </div>
-              <Button variant="secondary" size="sm" onClick={handleToday}>
-                Today
-              </Button>
-            </div>
-            <Button
-              leftIcon={<Plus className="w-4 h-4" />}
-              onClick={() => {
-                setFormData({
-                  ...formData,
-                  scheduledDate: format(new Date(), 'yyyy-MM-dd'),
-                });
-                setShowCreateModal(true);
-              }}
-            >
-              Schedule Maintenance
-            </Button>
+        {/* Toolbar */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <button onClick={() => setCurrentDate(subWeeks(currentDate, 1))} className="p-2 hover:bg-glass-hover rounded-lg">
+              <ChevronLeft className="w-5 h-5 text-gray-400" />
+            </button>
+            <button onClick={() => setCurrentDate(addWeeks(currentDate, 1))} className="p-2 hover:bg-glass-hover rounded-lg">
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </button>
+            <Button variant="secondary" size="sm" onClick={() => setCurrentDate(new Date())}>Today</Button>
+            <span className="ml-4 text-lg font-semibold text-white">
+              {format(weekStart, 'MMM d')} - {format(addDays(weekStart, 6), 'MMM d, yyyy')}
+            </span>
           </div>
+          <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => {
+            setFormData({ ...initialFormData, scheduledDate: format(new Date(), 'yyyy-MM-dd') });
+            setShowCreateModal(true);
+          }}>
+            Schedule
+          </Button>
+        </div>
 
-          {/* Week Days Header */}
-          <div className="grid grid-cols-7 border-b border-gray-200">
-            {weekDays.map((day) => (
-              <div
-                key={day}
-                className="py-3 text-center text-sm font-semibold text-gray-500"
-              >
-                {day}
-              </div>
-            ))}
-          </div>
+        {/* Week Grid - Kanban Style */}
+        <div className="grid grid-cols-7 gap-3">
+          {weekDays.map((day, idx) => {
+            const events = getEventsForDay(day);
+            const today = isToday(day);
+            return (
+              <div key={idx} className={cn(
+                'bg-dark-800/50 backdrop-blur-lg rounded-xl border min-h-[400px]',
+                today ? 'border-primary-500/50' : 'border-dark-700/50'
+              )}>
+                {/* Day Header */}
+                <div className={cn(
+                  'p-3 border-b text-center',
+                  today ? 'border-primary-500/30 bg-primary-500/10' : 'border-dark-700/50'
+                )}>
+                  <div className="text-xs font-medium text-gray-500 uppercase">{format(day, 'EEE')}</div>
+                  <div className={cn(
+                    'text-xl font-bold mt-1',
+                    today ? 'text-primary-400' : 'text-white'
+                  )}>{format(day, 'd')}</div>
+                </div>
 
-          {/* Calendar Grid */}
-          <div className="grid grid-cols-7">
-            {calendarDays.map((day, index) => {
-              const events = getEventsForDay(day);
-              const isCurrentMonth = isSameMonth(day, currentMonth);
-              const today = isToday(day);
-
-              return (
-                <div
-                  key={index}
-                  onClick={() => handleDateClick(day)}
-                  className={cn(
-                    'min-h-[120px] p-2 border-b border-r border-gray-100 cursor-pointer',
-                    'hover:bg-gray-50 transition-colors',
-                    !isCurrentMonth && 'bg-gray-50',
-                    today && 'bg-primary-50'
-                  )}
-                >
-                  <div
-                    className={cn(
-                      'w-8 h-8 flex items-center justify-center rounded-full text-sm font-medium mb-1',
-                      today
-                        ? 'bg-primary-600 text-white'
-                        : isCurrentMonth
-                          ? 'text-gray-900'
-                          : 'text-gray-400'
-                    )}
-                  >
-                    {format(day, 'd')}
-                  </div>
-
-                  {/* Events */}
-                  <div className="space-y-1">
-                    {events.slice(0, 3).map((event) => (
+                {/* Events */}
+                <div className="p-2 space-y-2">
+                  {events.length === 0 ? (
+                    <button
+                      onClick={() => {
+                        setFormData({ ...initialFormData, scheduledDate: format(day, 'yyyy-MM-dd') });
+                        setShowCreateModal(true);
+                      }}
+                      className="w-full p-3 border-2 border-dashed border-dark-600/50 rounded-lg text-gray-600 hover:border-primary-500/50 hover:text-primary-400 transition-all text-xs"
+                    >
+                      + Add
+                    </button>
+                  ) : (
+                    events.map(event => (
                       <div
                         key={event.id}
+                        onClick={() => { setSelectedEvent(event); setShowEventModal(true); }}
                         className={cn(
-                          'text-xs px-2 py-1 rounded truncate',
+                          'p-2.5 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]',
                           getPriorityColor(event.priority)
                         )}
-                        title={event.subject}
                       >
-                        {event.subject}
-                      </div>
-                    ))}
-                    {events.length > 3 && (
-                      <div className="text-xs text-gray-500 pl-2">
-                        +{events.length - 3} more
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Legend */}
-          <div className="mt-6 pt-4 border-t border-gray-200 flex items-center gap-6">
-            <span className="text-sm text-gray-500">Priority:</span>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-gray-200" />
-                <span className="text-xs text-gray-600">Low</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-blue-200" />
-                <span className="text-xs text-gray-600">Medium</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-orange-200" />
-                <span className="text-xs text-gray-600">High</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-red-200" />
-                <span className="text-xs text-gray-600">Critical</span>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Upcoming Maintenance Sidebar */}
-        <div className="mt-6">
-          <Card>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Upcoming Preventive Maintenance
-            </h3>
-            <div className="space-y-4">
-              {requests
-                .filter((r) => new Date(r.scheduledDate) >= new Date())
-                .sort((a, b) => new Date(a.scheduledDate) - new Date(b.scheduledDate))
-                .slice(0, 5)
-                .map((event) => (
-                  <div
-                    key={event.id}
-                    className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl"
-                  >
-                    <div className="p-2 bg-primary-100 rounded-lg">
-                      <CalendarIcon className="w-5 h-5 text-primary-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{event.subject}</p>
-                      <p className="text-sm text-gray-500">{event.equipmentName || event.Equipment?.name || 'N/A'}</p>
-                      <div className="flex items-center gap-4 mt-2">
-                        <span className="text-xs text-primary-600 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatDate(event.scheduledDate)}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Avatar name={event.assignedTechnician || event.AssignedTechnician?.name || 'Unassigned'} size="xs" />
-                          <span className="text-xs text-gray-500">
-                            {event.assignedTechnician || event.AssignedTechnician?.name || 'Unassigned'}
+                        <div className="font-medium text-sm truncate">{event.subject}</div>
+                        <div className="text-xs opacity-70 truncate mt-1">{event.equipment?.name}</div>
+                        <div className="flex items-center gap-1 mt-2">
+                          <Avatar name={event.assignedTechnician?.name || 'U'} size="xs" />
+                          <span className="text-xs opacity-70 truncate">
+                            {event.assignedTechnician?.name || 'Unassigned'}
                           </span>
                         </div>
                       </div>
-                    </div>
-                    <Badge
-                      variant={
-                        event.priority === 'critical'
-                          ? 'danger'
-                          : event.priority === 'high'
-                            ? 'warning'
-                            : 'default'
-                      }
-                      size="sm"
-                    >
-                      {event.priority}
-                    </Badge>
-                  </div>
-                ))}
-              {requests.filter((r) => new Date(r.scheduledDate) >= new Date()).length ===
-                0 && (
-                  <p className="text-sm text-gray-500 text-center py-4">
-                    No upcoming maintenance scheduled
-                  </p>
-                )}
-            </div>
-          </Card>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Day Events Modal */}
-      <Modal
-        isOpen={showDayModal}
-        onClose={() => setShowDayModal(false)}
-        title={selectedDate ? format(selectedDate, 'EEEE, MMMM d, yyyy') : ''}
-        size="md"
-      >
-        {selectedDate && (
+      {/* Event Modal */}
+      <Modal isOpen={showEventModal} onClose={() => setShowEventModal(false)} title="Event Details" size="md">
+        {selectedEvent && (
           <div className="space-y-4">
-            {getEventsForDay(selectedDate).map((event) => (
-              <div
-                key={event.id}
-                className="p-4 border border-gray-200 rounded-xl hover:bg-gray-50"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="font-medium text-gray-900">{event.subject}</h4>
-                    <p className="text-sm text-gray-500">{event.equipmentName || event.Equipment?.name || 'N/A'}</p>
-                  </div>
-                  <Badge
-                    variant={
-                      event.priority === 'critical'
-                        ? 'danger'
-                        : event.priority === 'high'
-                          ? 'warning'
-                          : 'info'
-                    }
-                  >
-                    {event.priority}
-                  </Badge>
-                </div>
-                <div className="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <Avatar name={event.assignedTechnician || event.AssignedTechnician?.name || 'Unassigned'} size="xs" />
-                    <span className="text-sm text-gray-600">{event.assignedTechnician || event.AssignedTechnician?.name || 'Unassigned'}</span>
-                  </div>
-                  <span className="text-sm text-gray-500">{event.maintenanceTeam?.name || event.Team?.name || 'N/A'}</span>
-                </div>
+            <h3 className="text-lg font-semibold text-white">{selectedEvent.subject}</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-dark-900/50 rounded-xl">
+                <p className="text-xs text-gray-500">Equipment</p>
+                <p className="text-sm text-gray-200">{selectedEvent.equipment?.name || '-'}</p>
               </div>
-            ))}
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={() => {
-                setShowDayModal(false);
-                setFormData({
-                  ...formData,
-                  scheduledDate: format(selectedDate, 'yyyy-MM-dd'),
-                });
-                setShowCreateModal(true);
-              }}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Maintenance
-            </Button>
+              <div className="p-3 bg-dark-900/50 rounded-xl">
+                <p className="text-xs text-gray-500">Date</p>
+                <p className="text-sm text-gray-200">{formatDate(selectedEvent.scheduled_date)}</p>
+              </div>
+              <div className="p-3 bg-dark-900/50 rounded-xl">
+                <p className="text-xs text-gray-500">Priority</p>
+                <Badge variant={selectedEvent.priority === 'critical' ? 'danger' : 'info'}>{selectedEvent.priority}</Badge>
+              </div>
+              <div className="p-3 bg-dark-900/50 rounded-xl">
+                <p className="text-xs text-gray-500">Assigned</p>
+                <p className="text-sm text-gray-200">{selectedEvent.assignedTechnician?.name || 'Unassigned'}</p>
+              </div>
+            </div>
           </div>
         )}
       </Modal>
 
-      {/* Create Maintenance Modal */}
+      {/* Create Modal */}
       <Modal
         isOpen={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false);
-          setFormData(initialFormData);
-        }}
-        title="Schedule Preventive Maintenance"
-        size="lg"
+        onClose={() => { setShowCreateModal(false); setFormData(initialFormData); }}
+        title="Schedule Maintenance"
+        size="md"
         footer={
           <>
-            <Button variant="secondary" onClick={() => {
-              setShowCreateModal(false);
-              setFormData(initialFormData);
-            }} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreateMaintenance} disabled={saving}>
-              {saving ? 'Scheduling...' : 'Schedule'}
-            </Button>
+            <Button variant="secondary" onClick={() => setShowCreateModal(false)} disabled={saving}>Cancel</Button>
+            <Button onClick={handleCreateMaintenance} disabled={saving}>{saving ? 'Saving...' : 'Schedule'}</Button>
           </>
         }
       >
         <div className="space-y-4">
-          <Input
-            label="Subject"
-            value={formData.subject}
-            onChange={(v) => setFormData({ ...formData, subject: v })}
-            placeholder="e.g., Quarterly inspection"
-            required
-          />
-
-          <Textarea
-            label="Description"
-            value={formData.description}
-            onChange={(v) => setFormData({ ...formData, description: v })}
-            placeholder="Maintenance details..."
-            rows={3}
-          />
-
+          <Input label="Subject" value={formData.subject} onChange={v => setFormData({ ...formData, subject: v })} required />
           <Select
             label="Equipment"
             value={formData.equipmentId}
-            onChange={handleEquipmentChange}
-            options={equipment.map((e) => ({
-              value: e.id.toString(),
-              label: `${e.name} (${e.serialNumber || 'No S/N'})`,
-            }))}
-            placeholder="Select equipment"
+            onChange={v => setFormData({ ...formData, equipmentId: v })}
+            options={equipment.map(e => ({ value: e.id.toString(), label: e.name }))}
             required
           />
-
           <div className="grid grid-cols-2 gap-4">
+            <Input label="Date" type="date" value={formData.scheduledDate} onChange={v => setFormData({ ...formData, scheduledDate: v })} required />
             <Select
-              label="Maintenance Team"
-              value={formData.maintenanceTeamId}
-              onChange={(v) =>
-                setFormData({ ...formData, maintenanceTeamId: v, assignedTechnicianId: '' })
-              }
-              options={teams.map((t) => ({
-                value: t.id.toString(),
-                label: t.name,
-              }))}
-              placeholder="Select team"
-            />
-            <Select
-              label="Assigned Technician"
-              value={formData.assignedTechnicianId}
-              onChange={(v) => setFormData({ ...formData, assignedTechnicianId: v })}
-              options={getTechniciansForTeam(formData.maintenanceTeamId).map((t) => ({
-                value: t.id.toString(),
-                label: t.name,
-              }))}
-              placeholder="Select technician"
-              disabled={!formData.maintenanceTeamId}
+              label="Priority"
+              value={formData.priority}
+              onChange={v => setFormData({ ...formData, priority: v })}
+              options={[{ value: 'low', label: 'Low' }, { value: 'medium', label: 'Medium' }, { value: 'high', label: 'High' }, { value: 'critical', label: 'Critical' }]}
             />
           </div>
-
-          <Input
-            label="Scheduled Date"
-            type="date"
-            value={formData.scheduledDate}
-            onChange={(v) => setFormData({ ...formData, scheduledDate: v })}
-            required
-          />
-
-          <Select
-            label="Priority"
-            value={formData.priority}
-            onChange={(v) => setFormData({ ...formData, priority: v })}
-            options={[
-              { value: 'low', label: 'Low' },
-              { value: 'medium', label: 'Medium' },
-              { value: 'high', label: 'High' },
-              { value: 'critical', label: 'Critical' },
-            ]}
-            placeholder="Select priority"
-          />
+          <Textarea label="Description" value={formData.description} onChange={v => setFormData({ ...formData, description: v })} rows={2} />
         </div>
       </Modal>
     </div>

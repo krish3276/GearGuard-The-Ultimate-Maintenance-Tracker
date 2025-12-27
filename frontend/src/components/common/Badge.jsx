@@ -1,44 +1,31 @@
 import { cn } from '../../utils/helpers';
 
-const Badge = ({ children, variant = 'default', size = 'md', dot = false, className }) => {
+const Badge = ({ children, variant = 'default', size = 'md', className }) => {
   const variants = {
-    default: 'bg-gray-100 text-gray-800',
-    primary: 'bg-primary-100 text-primary-800',
-    success: 'bg-green-100 text-green-800',
-    warning: 'bg-amber-100 text-amber-800',
-    danger: 'bg-red-100 text-red-800',
-    info: 'bg-blue-100 text-blue-800',
-    purple: 'bg-purple-100 text-purple-800',
-  };
-
-  const dotColors = {
-    default: 'bg-gray-500',
-    primary: 'bg-primary-500',
-    success: 'bg-green-500',
-    warning: 'bg-amber-500',
-    danger: 'bg-red-500',
-    info: 'bg-blue-500',
-    purple: 'bg-purple-500',
+    default: 'bg-dark-700/50 text-gray-300 border border-dark-600/50',
+    primary: 'bg-primary-500/20 text-primary-300 border border-primary-500/30',
+    success: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
+    warning: 'bg-amber-500/20 text-amber-300 border border-amber-500/30',
+    danger: 'bg-rose-500/20 text-rose-300 border border-rose-500/30',
+    info: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30',
+    purple: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
   };
 
   const sizes = {
     sm: 'px-2 py-0.5 text-xs',
-    md: 'px-2.5 py-0.5 text-xs',
-    lg: 'px-3 py-1 text-sm',
+    md: 'px-3 py-1 text-xs',
+    lg: 'px-4 py-1.5 text-sm',
   };
 
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full font-medium',
+        'inline-flex items-center font-semibold rounded-full backdrop-blur-sm',
         variants[variant],
         sizes[size],
         className
       )}
     >
-      {dot && (
-        <span className={cn('w-1.5 h-1.5 rounded-full mr-1.5', dotColors[variant])} />
-      )}
       {children}
     </span>
   );

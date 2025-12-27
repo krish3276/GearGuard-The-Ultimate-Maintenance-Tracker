@@ -57,34 +57,46 @@ const Signup = () => {
         }
     };
 
+    const inputClass = `w-full px-4 py-3 bg-dark-900/50 border border-dark-600/50 rounded-xl text-gray-100
+                       focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
+                       placeholder:text-gray-500 transition-all duration-300`;
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-primary-900 flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
+        <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+            {/* Animated Background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-dark-950 via-primary-950 to-dark-950"></div>
+            <div className="absolute inset-0">
+                <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-500/20 rounded-full blur-3xl animate-pulse"></div>
+                <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+                <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-500"></div>
+            </div>
+
+            <div className="w-full max-w-md relative z-10">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-4">
-                        <Cog className="w-10 h-10 text-primary-600" />
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-cyan-500 rounded-2xl shadow-glow mb-4">
+                        <Cog className="w-10 h-10 text-white" />
                     </div>
                     <h1 className="text-3xl font-bold text-white">GearGuard</h1>
-                    <p className="text-primary-200 mt-2">Maintenance Management System</p>
+                    <p className="text-gray-400 mt-2">Maintenance Management System</p>
                 </div>
 
                 {/* Signup Card */}
-                <div className="bg-white rounded-2xl shadow-xl p-8">
+                <div className="bg-dark-800/60 backdrop-blur-xl rounded-2xl shadow-2xl p-8 border border-dark-700/50">
                     <div className="text-center mb-6">
-                        <h2 className="text-2xl font-semibold text-gray-900">Create Account</h2>
-                        <p className="text-gray-500 mt-1">Join GearGuard today</p>
+                        <h2 className="text-2xl font-semibold text-white">Create Account</h2>
+                        <p className="text-gray-400 mt-1">Join GearGuard today</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {error && (
-                            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+                            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-sm text-rose-400">
                                 {error}
                             </div>
                         )}
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Full Name
                             </label>
                             <input
@@ -92,14 +104,12 @@ const Signup = () => {
                                 value={formData.name}
                                 onChange={(e) => handleChange('name', e.target.value)}
                                 placeholder="John Smith"
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                         placeholder:text-gray-400"
+                                className={inputClass}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Email address
                             </label>
                             <input
@@ -107,30 +117,27 @@ const Signup = () => {
                                 value={formData.email}
                                 onChange={(e) => handleChange('email', e.target.value)}
                                 placeholder="you@company.com"
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                         placeholder:text-gray-400"
+                                className={inputClass}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Role
                             </label>
                             <select
                                 value={formData.role}
                                 onChange={(e) => handleChange('role', e.target.value)}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm
-                         focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                className={`${inputClass} cursor-pointer`}
                             >
-                                <option value="technician">Technician</option>
-                                <option value="manager">Manager</option>
-                                <option value="admin">Admin</option>
+                                <option value="technician" className="bg-dark-800">Technician</option>
+                                <option value="manager" className="bg-dark-800">Manager</option>
+                                <option value="admin" className="bg-dark-800">Admin</option>
                             </select>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Password
                             </label>
                             <div className="relative">
@@ -139,14 +146,12 @@ const Signup = () => {
                                     value={formData.password}
                                     onChange={(e) => handleChange('password', e.target.value)}
                                     placeholder="Create a password"
-                                    className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg text-sm
-                           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                           placeholder:text-gray-400"
+                                    className={`${inputClass} pr-12`}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-300 transition-colors"
                                 >
                                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
@@ -154,7 +159,7 @@ const Signup = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-sm font-medium text-gray-300 mb-2">
                                 Confirm Password
                             </label>
                             <div className="relative">
@@ -163,14 +168,12 @@ const Signup = () => {
                                     value={formData.confirmPassword}
                                     onChange={(e) => handleChange('confirmPassword', e.target.value)}
                                     placeholder="Confirm your password"
-                                    className="w-full px-4 py-3 pr-10 border border-gray-300 rounded-lg text-sm
-                           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
-                           placeholder:text-gray-400"
+                                    className={`${inputClass} pr-12`}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-500 hover:text-gray-300 transition-colors"
                                 >
                                     {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                 </button>
@@ -180,11 +183,11 @@ const Signup = () => {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full py-3 bg-primary-600 text-white rounded-lg font-medium
-                       hover:bg-primary-700 transition-colors duration-200
-                       focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
-                       disabled:opacity-50 disabled:cursor-not-allowed
-                       flex items-center justify-center gap-2 mt-6"
+                            className="w-full py-3 bg-gradient-to-r from-primary-600 to-primary-500 text-white rounded-xl font-semibold
+                                     hover:from-primary-500 hover:to-primary-400 transition-all duration-300
+                                     focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:ring-offset-2 focus:ring-offset-dark-900
+                                     disabled:opacity-50 disabled:cursor-not-allowed shadow-glow-sm hover:shadow-glow
+                                     flex items-center justify-center gap-2 mt-6"
                         >
                             {isLoading ? (
                                 <>
@@ -201,16 +204,16 @@ const Signup = () => {
                     </form>
 
                     <div className="mt-6 text-center">
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-400">
                             Already have an account?{' '}
-                            <Link to="/login" className="text-primary-600 hover:text-primary-700 font-medium">
+                            <Link to="/login" className="text-primary-400 hover:text-primary-300 font-medium transition-colors">
                                 Sign in
                             </Link>
                         </p>
                     </div>
                 </div>
 
-                <p className="text-center text-primary-200 text-sm mt-6">
+                <p className="text-center text-gray-500 text-sm mt-6">
                     © 2024 GearGuard. All rights reserved.
                 </p>
             </div>

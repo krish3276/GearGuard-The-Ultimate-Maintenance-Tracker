@@ -14,7 +14,11 @@ const Avatar = ({ name, src, size = 'md', className }) => {
       <img
         src={src}
         alt={name}
-        className={cn('rounded-full object-cover', sizes[size], className)}
+        className={cn(
+          'rounded-full object-cover ring-2 ring-dark-600/50',
+          sizes[size],
+          className
+        )}
       />
     );
   }
@@ -22,7 +26,8 @@ const Avatar = ({ name, src, size = 'md', className }) => {
   return (
     <div
       className={cn(
-        'rounded-full flex items-center justify-center text-white font-medium',
+        'rounded-full flex items-center justify-center text-white font-semibold',
+        'ring-2 ring-dark-600/30 shadow-lg',
         sizes[size],
         getAvatarColor(name),
         className

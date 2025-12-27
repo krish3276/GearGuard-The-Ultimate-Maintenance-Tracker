@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Mail, Phone, Wrench, Trash2, Edit, User, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Plus, Mail, Trash2, User, Loader2, Wrench } from 'lucide-react';
 import { Header } from '../components/layout';
-import { Card, Button, Avatar, Badge, Modal, Input, EmptyState, Select } from '../components/common';
+import { Card, Button, Avatar, Badge, Modal, EmptyState, Select } from '../components/common';
 import { teamsAPI, usersAPI } from '../services/api';
-import { cn } from '../utils/helpers';
 
 const TeamDetail = () => {
   const { id } = useParams();
@@ -88,7 +87,7 @@ const TeamDetail = () => {
       <div>
         <Header title="Loading..." />
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
         </div>
       </div>
     );
@@ -124,7 +123,7 @@ const TeamDetail = () => {
         <div className="flex items-center justify-between mb-6">
           <Link
             to="/teams"
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Teams
@@ -143,14 +142,14 @@ const TeamDetail = () => {
             <Card>
               <div
                 className="w-16 h-16 rounded-xl flex items-center justify-center mb-4"
-                style={{ backgroundColor: (team.color || '#3b82f6') + '20' }}
+                style={{ backgroundColor: (team.color || '#3b82f6') + '30' }}
               >
                 <Wrench className="w-8 h-8" style={{ color: team.color || '#3b82f6' }} />
               </div>
-              <h2 className="text-xl font-semibold text-gray-900">{team.name}</h2>
-              <p className="text-gray-500 mt-2">{team.description}</p>
+              <h2 className="text-xl font-semibold text-white">{team.name}</h2>
+              <p className="text-gray-400 mt-2">{team.description}</p>
 
-              <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="mt-6 pt-6 border-t border-dark-700/50">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Team Members</span>
                   <Badge variant="primary">{technicians.length}</Badge>
@@ -162,19 +161,19 @@ const TeamDetail = () => {
           {/* Technicians List */}
           <div className="lg:col-span-2">
             <Card>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Technicians</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">Technicians</h3>
 
               {technicians.length > 0 ? (
                 <div className="space-y-4">
                   {technicians.map((tech) => (
                     <div
                       key={tech.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+                      className="flex items-center justify-between p-4 bg-dark-900/50 rounded-xl border border-dark-700/50 hover:border-primary-500/30 transition-all duration-200"
                     >
                       <div className="flex items-center gap-4">
                         <Avatar name={tech.name} size="lg" />
                         <div>
-                          <p className="font-medium text-gray-900">{tech.name}</p>
+                          <p className="font-medium text-gray-200">{tech.name}</p>
                           <div className="flex items-center gap-4 mt-1">
                             <span className="text-sm text-gray-500 flex items-center gap-1">
                               <Mail className="w-3.5 h-3.5" />
@@ -194,7 +193,7 @@ const TeamDetail = () => {
                             setSelectedTech(tech);
                             setShowDeleteConfirm(true);
                           }}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                          className="p-2 text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-all duration-200"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -267,8 +266,8 @@ const TeamDetail = () => {
           </>
         }
       >
-        <p className="text-gray-600">
-          Are you sure you want to remove <strong>{selectedTech?.name}</strong> from this team?
+        <p className="text-gray-300">
+          Are you sure you want to remove <strong className="text-white">{selectedTech?.name}</strong> from this team?
         </p>
       </Modal>
     </div>

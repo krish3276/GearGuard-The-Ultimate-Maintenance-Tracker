@@ -3,9 +3,7 @@ import {
   LayoutDashboard,
   Wrench,
   Users,
-  ClipboardList,
   Calendar,
-  Settings,
   ChevronLeft,
   ChevronRight,
   Cog,
@@ -28,21 +26,22 @@ const Sidebar = () => {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 h-screen bg-sidebar-bg text-white z-40',
+        'fixed left-0 top-0 h-screen z-40',
+        'bg-dark-900/95 backdrop-blur-xl border-r border-dark-700/50',
         'transition-all duration-300 ease-in-out',
         collapsed ? 'w-20' : 'w-64'
       )}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-gray-700">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-dark-700/50">
         <div className={cn('flex items-center gap-3', collapsed && 'justify-center w-full')}>
-          <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-glow-sm">
             <Cog className="w-6 h-6 text-white" />
           </div>
           {!collapsed && (
             <div>
-              <h1 className="text-lg font-bold">GearGuard</h1>
-              <p className="text-xs text-gray-400">Maintenance System</p>
+              <h1 className="text-lg font-bold text-white">GearGuard</h1>
+              <p className="text-xs text-gray-500">Maintenance System</p>
             </div>
           )}
         </div>
@@ -62,16 +61,19 @@ const Sidebar = () => {
                 <NavLink
                   to={item.href}
                   className={cn(
-                    'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium',
-                    'transition-colors duration-200',
+                    'flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium',
+                    'transition-all duration-300',
                     isActive
-                      ? 'bg-primary-600 text-white'
-                      : 'text-gray-300 hover:bg-sidebar-hover hover:text-white',
+                      ? 'bg-gradient-to-r from-primary-600/80 to-primary-500/60 text-white shadow-glow-sm'
+                      : 'text-gray-400 hover:bg-glass-hover hover:text-white',
                     collapsed && 'justify-center px-2'
                   )}
                   title={collapsed ? item.name : undefined}
                 >
-                  <item.icon className="w-5 h-5 flex-shrink-0" />
+                  <item.icon className={cn(
+                    'w-5 h-5 flex-shrink-0 transition-colors',
+                    isActive && 'text-white'
+                  )} />
                   {!collapsed && <span>{item.name}</span>}
                 </NavLink>
               </li>
@@ -85,8 +87,8 @@ const Sidebar = () => {
         <button
           onClick={() => setCollapsed(!collapsed)}
           className={cn(
-            'flex items-center justify-center w-full py-2 text-gray-400',
-            'hover:text-white hover:bg-sidebar-hover rounded-lg transition-colors'
+            'flex items-center justify-center w-full py-3 text-gray-500',
+            'hover:text-white hover:bg-glass-hover rounded-xl transition-all duration-300'
           )}
         >
           {collapsed ? (

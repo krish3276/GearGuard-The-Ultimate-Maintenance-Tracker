@@ -5,18 +5,14 @@ import {
   List,
   Filter,
   AlertTriangle,
-  Clock,
-  User,
   Calendar,
-  X,
-  GripVertical,
   Loader2,
 } from 'lucide-react';
 import { Header } from '../components/layout';
 import { Card, Button, Badge, Avatar, Modal, Input, Select, Textarea, SearchInput } from '../components/common';
 import { maintenanceAPI, equipmentAPI, teamsAPI, usersAPI } from '../services/api';
 import { statusColors, priorityColors } from '../data/constants';
-import { formatDate, formatStatus, cn } from '../utils/helpers';
+import { formatDate, cn } from '../utils/helpers';
 
 const MaintenanceRequests = () => {
   const [requests, setRequests] = useState([]);
@@ -45,10 +41,10 @@ const MaintenanceRequests = () => {
   });
 
   const columns = [
-    { id: 'New', title: 'New', color: 'bg-indigo-500' },
-    { id: 'In Progress', title: 'In Progress', color: 'bg-amber-500' },
-    { id: 'Repaired', title: 'Repaired', color: 'bg-green-500' },
-    { id: 'Scrap', title: 'Scrap', color: 'bg-red-500' },
+    { id: 'New', title: 'New', color: 'from-indigo-500 to-purple-500' },
+    { id: 'In Progress', title: 'In Progress', color: 'from-amber-500 to-orange-500' },
+    { id: 'Repaired', title: 'Repaired', color: 'from-emerald-500 to-green-500' },
+    { id: 'Scrap', title: 'Scrap', color: 'from-rose-500 to-red-500' },
   ];
 
   useEffect(() => {
@@ -84,7 +80,7 @@ const MaintenanceRequests = () => {
       const matchesSearch =
         !searchTerm ||
         r.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (r.equipmentName || r.Equipment?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+        (r.equipment?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
       return matchesStatus && matchesSearch;
     });
   };
@@ -148,7 +144,6 @@ const MaintenanceRequests = () => {
         equipment_id: parseInt(formData.equipmentId),
       };
 
-      // Only include optional fields if they have values
       if (formData.description) payload.description = formData.description;
       if (formData.priority) payload.priority = formData.priority;
       if (formData.maintenanceTeamId) payload.maintenance_team_id = parseInt(formData.maintenanceTeamId);
@@ -212,22 +207,24 @@ const MaintenanceRequests = () => {
   };
 
   const getPriorityBadge = (priority) => {
-    const colors = priorityColors[priority] || priorityColors.medium;
-    return (
-      <Badge className={cn(colors.bg, colors.text)} size="sm">
-        {priority}
-      </Badge>
-    );
+    const variants = {
+      low: 'default',
+      medium: 'info',
+      high: 'warning',
+      critical: 'danger',
+    };
+    return <Badge variant={variants[priority] || 'default'} size="sm">{priority}</Badge>;
   };
 
   const getStatusBadge = (status) => {
     const statusKey = status?.toLowerCase().replace(' ', '_') || 'new';
-    const colors = statusColors[statusKey] || statusColors.new;
-    return (
-      <Badge className={cn(colors.bg, colors.text)}>
-        {status || 'New'}
-      </Badge>
-    );
+    const variants = {
+      new: 'info',
+      in_progress: 'warning',
+      repaired: 'success',
+      scrap: 'danger',
+    };
+    return <Badge variant={variants[statusKey] || 'default'}>{status || 'New'}</Badge>;
   };
 
   if (loading) {
@@ -235,7 +232,7 @@ const MaintenanceRequests = () => {
       <div>
         <Header title="Maintenance Requests" subtitle="Track and manage all maintenance work orders" />
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
         </div>
       </div>
     );
@@ -247,8 +244,8 @@ const MaintenanceRequests = () => {
         <Header title="Maintenance Requests" subtitle="Track and manage all maintenance work orders" />
         <div className="p-6">
           <Card className="text-center py-12">
-            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <p className="text-red-600 mb-4">{error}</p>
+            <AlertTriangle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
+            <p className="text-rose-400 mb-4">{error}</p>
             <Button onClick={fetchData}>Retry</Button>
           </Card>
         </div>
@@ -274,14 +271,14 @@ const MaintenanceRequests = () => {
               placeholder="Search requests..."
               className="w-64"
             />
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+            <div className="flex items-center bg-dark-800/50 border border-dark-700/50 rounded-xl p-1">
               <button
                 onClick={() => setViewMode('kanban')}
                 className={cn(
-                  'p-2 rounded-md transition-colors',
+                  'p-2.5 rounded-lg transition-all duration-200',
                   viewMode === 'kanban'
-                    ? 'bg-white shadow-sm text-primary-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-primary-500/20 text-primary-400 shadow-glow-sm'
+                    : 'text-gray-500 hover:text-gray-300'
                 )}
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -289,10 +286,10 @@ const MaintenanceRequests = () => {
               <button
                 onClick={() => setViewMode('list')}
                 className={cn(
-                  'p-2 rounded-md transition-colors',
+                  'p-2.5 rounded-lg transition-all duration-200',
                   viewMode === 'list'
-                    ? 'bg-white shadow-sm text-primary-600'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'bg-primary-500/20 text-primary-400 shadow-glow-sm'
+                    : 'text-gray-500 hover:text-gray-300'
                 )}
               >
                 <List className="w-4 h-4" />
@@ -310,15 +307,15 @@ const MaintenanceRequests = () => {
             {columns.map((column) => (
               <div
                 key={column.id}
-                className="kanban-column"
+                className="bg-dark-800/40 backdrop-blur-lg rounded-2xl p-4 min-h-[500px] w-80 flex-shrink-0 border border-dark-700/30"
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, column.id)}
               >
                 {/* Column Header */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <div className={cn('w-3 h-3 rounded-full', column.color)} />
-                    <h3 className="font-semibold text-gray-900">{column.title}</h3>
+                    <div className={cn('w-3 h-3 rounded-full bg-gradient-to-r', column.color)} />
+                    <h3 className="font-semibold text-gray-200">{column.title}</h3>
                     <Badge variant="default" size="sm">
                       {getColumnRequests(column.id).length}
                     </Badge>
@@ -331,8 +328,10 @@ const MaintenanceRequests = () => {
                     <div
                       key={request.id}
                       className={cn(
-                        'kanban-card',
-                        request.isOverdue && 'border-l-4 border-l-red-500'
+                        'bg-dark-800/60 backdrop-blur-sm rounded-xl p-4 border border-dark-700/50',
+                        'hover:border-primary-500/30 hover:shadow-glow-sm transition-all duration-300',
+                        'cursor-grab active:cursor-grabbing',
+                        request.isOverdue && 'border-l-4 border-l-rose-500'
                       )}
                       draggable
                       onDragStart={(e) => handleDragStart(e, request)}
@@ -341,11 +340,11 @@ const MaintenanceRequests = () => {
                     >
                       {/* Card Header */}
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <h4 className="text-sm font-medium text-gray-900 line-clamp-2">
+                        <h4 className="text-sm font-medium text-gray-200 line-clamp-2">
                           {request.subject}
                         </h4>
                         {request.isOverdue && (
-                          <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                          <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
                         )}
                       </div>
 
@@ -367,8 +366,8 @@ const MaintenanceRequests = () => {
                       </div>
 
                       {/* Scheduled Date */}
-                      {request.scheduledDate && (
-                        <div className="flex items-center gap-1 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                      {request.scheduled_date && (
+                        <div className="flex items-center gap-1 mt-3 pt-3 border-t border-dark-700/50 text-xs text-gray-500">
                           <Calendar className="w-3 h-3" />
                           {formatDate(request.scheduled_date)}
                         </div>
@@ -377,7 +376,7 @@ const MaintenanceRequests = () => {
                   ))}
 
                   {getColumnRequests(column.id).length === 0 && (
-                    <div className="text-center py-8 text-gray-400 text-sm">
+                    <div className="text-center py-8 text-gray-500 text-sm">
                       No requests
                     </div>
                   )}
@@ -393,7 +392,7 @@ const MaintenanceRequests = () => {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
+                  <tr className="border-b border-dark-700/50">
                     <th className="table-header">Subject</th>
                     <th className="table-header">Equipment</th>
                     <th className="table-header">Type</th>
@@ -403,7 +402,7 @@ const MaintenanceRequests = () => {
                     <th className="table-header">Scheduled</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-dark-700/30">
                   {requests
                     .filter(
                       (r) =>
@@ -414,18 +413,18 @@ const MaintenanceRequests = () => {
                     .map((request) => (
                       <tr
                         key={request.id}
-                        className="hover:bg-gray-50 cursor-pointer"
+                        className="hover:bg-glass-white cursor-pointer transition-colors"
                         onClick={() => handleCardClick(request)}
                       >
                         <td className="table-cell">
                           <div className="flex items-center gap-2">
                             {request.isOverdue && (
-                              <AlertTriangle className="w-4 h-4 text-red-500" />
+                              <AlertTriangle className="w-4 h-4 text-rose-400" />
                             )}
-                            <span className="font-medium">{request.subject}</span>
+                            <span className="font-medium text-gray-200">{request.subject}</span>
                           </div>
                         </td>
-                        <td className="table-cell text-gray-600">{request.equipment?.name || '-'}</td>
+                        <td className="table-cell text-gray-400">{request.equipment?.name || '-'}</td>
                         <td className="table-cell">
                           <Badge
                             variant={request.type === 'Preventive' ? 'info' : 'warning'}
@@ -439,10 +438,10 @@ const MaintenanceRequests = () => {
                         <td className="table-cell">
                           <div className="flex items-center gap-2">
                             <Avatar name={request.assignedTechnician?.name || 'Unassigned'} size="xs" />
-                            <span className="text-sm">{request.assignedTechnician?.name || 'Unassigned'}</span>
+                            <span className="text-sm text-gray-400">{request.assignedTechnician?.name || 'Unassigned'}</span>
                           </div>
                         </td>
-                        <td className="table-cell text-gray-600">
+                        <td className="table-cell text-gray-400">
                           {request.scheduled_date ? formatDate(request.scheduled_date) : '-'}
                         </td>
                       </tr>
@@ -582,7 +581,7 @@ const MaintenanceRequests = () => {
             {/* Header */}
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 className="text-lg font-semibold text-white">
                   {selectedRequest.subject}
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
@@ -594,7 +593,7 @@ const MaintenanceRequests = () => {
 
             {/* Info Grid */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="p-4 bg-dark-900/50 rounded-xl border border-dark-700/50">
                 <p className="text-xs text-gray-500 mb-1">Type</p>
                 <Badge
                   variant={selectedRequest.type === 'Preventive' ? 'info' : 'warning'}
@@ -602,32 +601,32 @@ const MaintenanceRequests = () => {
                   {selectedRequest.type}
                 </Badge>
               </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="p-4 bg-dark-900/50 rounded-xl border border-dark-700/50">
                 <p className="text-xs text-gray-500 mb-1">Priority</p>
                 {getPriorityBadge(selectedRequest.priority || 'medium')}
               </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="p-4 bg-dark-900/50 rounded-xl border border-dark-700/50">
                 <p className="text-xs text-gray-500 mb-1">Assigned Team</p>
-                <p className="text-sm font-medium">{selectedRequest.maintenanceTeam?.name || '-'}</p>
+                <p className="text-sm font-medium text-gray-200">{selectedRequest.maintenanceTeam?.name || '-'}</p>
               </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="p-4 bg-dark-900/50 rounded-xl border border-dark-700/50">
                 <p className="text-xs text-gray-500 mb-1">Assigned Technician</p>
                 <div className="flex items-center gap-2">
                   <Avatar name={selectedRequest.assignedTechnician?.name || 'Unassigned'} size="xs" />
-                  <span className="text-sm font-medium">
+                  <span className="text-sm font-medium text-gray-200">
                     {selectedRequest.assignedTechnician?.name || 'Unassigned'}
                   </span>
                 </div>
               </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="p-4 bg-dark-900/50 rounded-xl border border-dark-700/50">
                 <p className="text-xs text-gray-500 mb-1">Created Date</p>
-                <p className="text-sm font-medium">
+                <p className="text-sm font-medium text-gray-200">
                   {formatDate(selectedRequest.created_at)}
                 </p>
               </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
+              <div className="p-4 bg-dark-900/50 rounded-xl border border-dark-700/50">
                 <p className="text-xs text-gray-500 mb-1">Scheduled Date</p>
-                <p className="text-sm font-medium">
+                <p className="text-sm font-medium text-gray-200">
                   {selectedRequest.scheduled_date
                     ? formatDate(selectedRequest.scheduled_date)
                     : '-'}
@@ -638,36 +637,55 @@ const MaintenanceRequests = () => {
             {/* Description */}
             {selectedRequest.description && (
               <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-2">Description</h4>
-                <p className="text-sm text-gray-600">{selectedRequest.description}</p>
+                <h4 className="text-sm font-medium text-gray-200 mb-2">Description</h4>
+                <p className="text-sm text-gray-400">{selectedRequest.description}</p>
               </div>
             )}
 
             {/* Status Update */}
-            <div className="pt-4 border-t border-gray-200">
-              <h4 className="text-sm font-medium text-gray-900 mb-3">Update Status</h4>
-              <div className="flex flex-wrap gap-2">
-                {columns.map((col) => (
-                  <button
-                    key={col.id}
-                    onClick={() => handleUpdateStatus(selectedRequest.id, col.id)}
-                    className={cn(
-                      'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                      selectedRequest.status === col.id
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    )}
-                  >
-                    {col.title}
-                  </button>
-                ))}
-              </div>
+            <div className="pt-4 border-t border-dark-700/50">
+              <h4 className="text-sm font-medium text-gray-200 mb-3">Update Status</h4>
+              {(() => {
+                // Valid transitions based on backend rules
+                const validTransitions = {
+                  'New': ['In Progress'],
+                  'In Progress': ['Repaired', 'Scrap'],
+                  'Repaired': [],
+                  'Scrap': []
+                };
+                const currentStatus = selectedRequest.status;
+                const availableTransitions = validTransitions[currentStatus] || [];
+
+                if (availableTransitions.length === 0) {
+                  return (
+                    <p className="text-sm text-gray-500">
+                      This request is {currentStatus.toLowerCase()} and cannot be changed.
+                    </p>
+                  );
+                }
+
+                return (
+                  <div className="flex flex-wrap gap-2">
+                    {availableTransitions.map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => handleUpdateStatus(selectedRequest.id, status)}
+                        className="px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200
+                          bg-dark-700/50 text-gray-300 hover:bg-dark-700 border border-dark-600/50
+                          hover:border-primary-500/30"
+                      >
+                        Move to {status}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Duration (for completed) */}
             {selectedRequest.status === 'repaired' && (
-              <div className="pt-4 border-t border-gray-200">
-                <h4 className="text-sm font-medium text-gray-900 mb-3">Work Duration</h4>
+              <div className="pt-4 border-t border-dark-700/50">
+                <h4 className="text-sm font-medium text-gray-200 mb-3">Work Duration</h4>
                 <Input
                   type="number"
                   placeholder="Hours spent"
