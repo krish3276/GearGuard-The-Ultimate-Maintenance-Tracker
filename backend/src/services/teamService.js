@@ -27,7 +27,9 @@ const updateTeam = async (id, teamData) => {
     throw new NotFoundError('Team not found');
   }
   await team.update(teamData);
-  return team;
+  
+  // Return updated team with members
+  return getTeamById(id);
 };
 
 const deleteTeam = async (id) => {

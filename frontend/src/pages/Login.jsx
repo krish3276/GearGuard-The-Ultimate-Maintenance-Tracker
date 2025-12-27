@@ -8,8 +8,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -21,15 +20,18 @@ const Login = () => {
       return;
     }
 
-    setIsLoading(true);
     const result = await login(email, password);
-    setIsLoading(false);
 
     if (result.success) {
       navigate('/');
     } else {
       setError(result.error || 'Invalid credentials');
     }
+  };
+
+  const handleInputChange = (setter) => (e) => {
+    setter(e.target.value);
+    setError(''); // Clear error on input change
   };
 
   return (
@@ -73,7 +75,7 @@ const Login = () => {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={handleInputChange(setEmail)}
                 placeholder="you@company.com"
                 className="w-full px-4 py-3 bg-dark-900/50 border border-dark-600/50 rounded-xl text-gray-100
                          focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50
@@ -89,7 +91,7 @@ const Login = () => {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={handleInputChange(setPassword)}
                   placeholder="Enter your password"
                   className="w-full px-4 py-3 pr-12 bg-dark-900/50 border border-dark-600/50 rounded-xl text-gray-100
                            focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500/50

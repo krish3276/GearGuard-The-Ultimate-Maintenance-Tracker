@@ -39,7 +39,9 @@ const updateUser = async (id, userData) => {
   }
 
   await user.update(userData);
-  return user;
+  
+  // Return updated user with associations
+  return getUserById(id);
 };
 
 const deleteUser = async (id) => {

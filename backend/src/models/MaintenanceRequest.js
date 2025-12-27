@@ -24,6 +24,15 @@ const MaintenanceRequest = sequelize.define('MaintenanceRequest', {
       notEmpty: { msg: 'Subject is required' }
     }
   },
+  description: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  priority: {
+    type: DataTypes.ENUM('low', 'medium', 'high', 'critical'),
+    allowNull: false,
+    defaultValue: 'medium'
+  },
   equipment_id: {
     type: DataTypes.INTEGER,
     allowNull: false,

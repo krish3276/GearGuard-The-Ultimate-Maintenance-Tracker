@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 // Backend runs on port 3000, all routes under /api prefix
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://tc7nqv49-3000.inc1.devtunnels.ms/api';
+// Use VITE_API_URL env variable or default to localhost
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 // Create axios instance with base configuration
 const api = axios.create({
@@ -9,7 +10,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 15000, // 15 second timeout
 });
 
 // Request interceptor - Add auth token to all requests
@@ -24,7 +25,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor - Handle auth errors
+// Response interceptor - Handle errors globally
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -32,7 +33,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
-      if (window.location.pathname !== '/login') {
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
         window.location.href = '/login';
       }
     }

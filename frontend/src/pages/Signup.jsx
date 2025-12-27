@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Cog, Eye, EyeOff, Loader2, UserPlus } from 'lucide-react';
-import { authAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const Signup = () => {
     const [formData, setFormData] = useState({
@@ -14,11 +14,12 @@ const Signup = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
+    const { register, isLoading } = useAuth();
 
     const handleChange = (field, value) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
+        setError(''); // Clear error on input change
     };
 
     const handleSubmit = async (e) => {
@@ -40,20 +41,17 @@ const Signup = () => {
             return;
         }
 
-        setIsLoading(true);
-        try {
-            await authAPI.register({
-                name: formData.name,
-                email: formData.email,
-                password: formData.password,
-                role: formData.role,
-            });
-            navigate('/login', { state: { message: 'Account created successfully. Please sign in.' } });
-        } catch (err) {
-            const message = err.response?.data?.message || err.message || 'Registration failed';
-            setError(message);
-        } finally {
-            setIsLoading(false);
+        const result = await register({
+            name: formData.name,
+            email: formData.email,
+            password: formData.password,
+            role: formData.role,
+        });
+
+        if (result.success) {
+            navigate('/');
+        } else {
+            setError(result.error);
         }
     };
 
