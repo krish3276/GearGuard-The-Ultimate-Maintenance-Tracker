@@ -5,7 +5,6 @@ import MainLayout from './layouts/MainLayout';
 import {
   Login,
   Signup,
-  ForgotPassword,
   Dashboard,
   Equipment,
   EquipmentDetail,
@@ -51,14 +50,6 @@ function AppRoutes() {
         element={
           <PublicRoute>
             <Signup />
-          </PublicRoute>
-        }
-      />
-      <Route
-        path="/forgot-password"
-        element={
-          <PublicRoute>
-            <ForgotPassword />
           </PublicRoute>
         }
       />
