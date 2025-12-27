@@ -390,7 +390,7 @@ const Equipment = () => {
           </>
         }
       >
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="Equipment Name"
             value={formData.name}
@@ -471,7 +471,7 @@ const Equipment = () => {
             options={teams.map((t) => ({ value: t.id.toString(), label: t.name }))}
             placeholder="Assign team"
           />
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <Textarea
               label="Description"
               value={formData.description}

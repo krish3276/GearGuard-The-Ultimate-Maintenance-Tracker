@@ -138,16 +138,16 @@ const Teams = () => {
     <div>
       <Header title="Maintenance Teams" subtitle="Manage your maintenance teams and technicians" />
 
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         {/* Actions */}
-        <div className="flex justify-end mb-6">
+        <div className="flex justify-end mb-4 md:mb-6">
           <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => handleOpenModal()}>
             Add Team
           </Button>
         </div>
 
         {/* Teams Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {teams.map((team) => (
             <Link key={team.id} to={`/teams/${team.id}`}>
               <Card hover className="h-full">

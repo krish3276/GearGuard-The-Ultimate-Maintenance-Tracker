@@ -111,7 +111,7 @@ const Profile = () => {
         subtitle="Manage your personal information and account settings"
       />
 
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Profile Overview Card */}
         <Card>
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
@@ -138,7 +138,7 @@ const Profile = () => {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           {/* Personal Information Section */}
           <Card>
             <div className="flex items-center gap-3 mb-6">

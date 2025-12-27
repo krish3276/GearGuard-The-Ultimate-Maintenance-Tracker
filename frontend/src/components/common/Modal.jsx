@@ -51,18 +51,23 @@ const Modal = ({
       />
 
       {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="flex min-h-full items-end sm:items-center justify-center p-0 sm:p-4">
         <div
           className={cn(
-            'relative w-full bg-dark-800/90 backdrop-blur-xl rounded-2xl shadow-2xl',
+            'relative w-full bg-dark-800/90 backdrop-blur-xl shadow-2xl',
             'border border-dark-700/50 transform transition-all',
+            // Full screen on mobile, rounded on desktop
+            'rounded-t-2xl sm:rounded-2xl',
+            // Max height on mobile
+            'max-h-[90vh] sm:max-h-[85vh]',
+            'flex flex-col',
             sizes[size]
           )}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
           {(title || showCloseButton) && (
-            <div className="flex items-center justify-between px-6 py-4 border-b border-dark-700/50">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-dark-700/50 flex-shrink-0">
               {title && (
                 <h2 className="text-lg font-semibold text-gray-100">{title}</h2>
               )}
@@ -78,11 +83,11 @@ const Modal = ({
           )}
 
           {/* Body */}
-          <div className="px-6 py-4">{children}</div>
+          <div className="px-4 sm:px-6 py-4 overflow-y-auto flex-1">{children}</div>
 
           {/* Footer */}
           {footer && (
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-dark-700/50 bg-dark-900/50 rounded-b-2xl">
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-4 border-t border-dark-700/50 bg-dark-900/50 rounded-b-2xl flex-shrink-0">
               {footer}
             </div>
           )}
